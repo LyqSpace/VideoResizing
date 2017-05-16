@@ -1,12 +1,13 @@
 #include "KeyFrame.h"
 
 
-KeyFrame::KeyFrame( const Mat &_img ) {
+KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 	
 	img = _img.clone();
 	cols = img.cols;
 	rows = img.rows;
 	size = img.size();
+	frameId = _frameId;
 
 	pixelLabel = Mat( rows, cols, CV_32SC1 );
 	cvtColor( img, grayImg, COLOR_BGR2GRAY );
@@ -14,6 +15,9 @@ KeyFrame::KeyFrame( const Mat &_img ) {
 	cvtColor( CIELabImg, CIELabImg, COLOR_BGR2Lab );
 
 	superPixelNum = 50;
+	opFlag = false;
+	edFlag = false;
+
 }
 
 double KeyFrame::CalcColorHistDiff( int spId0, int spId1 ) {
@@ -43,9 +47,9 @@ double KeyFrame::CalcColorHistDiff( int spId0, int spId1 ) {
 
 double KeyFrame::CalcSpatialDiff( int spId0, int spId1 ) {
 
-	int tmpX = sqr( superpixelCenter[spId0].x - superpixelCenter[spId1].x );
-	int tmpY = sqr( superpixelCenter[spId0].y - superpixelCenter[spId1].y );
-	return sqrt( tmpX + tmpY );
+	Point p0 = superpixelCenter[spId0];
+	Point p1 = superpixelCenter[spId1];
+	return NormL2( p0, p1 );
 }
 
 void KeyFrame::QuantizeColorSpace(const vector<Vec3f> &_palette, const Mat &_paletteDist) {
@@ -138,7 +142,6 @@ void KeyFrame::CalcSuperpixelColorHist() {
 
 void KeyFrame::CalcSpatialContrast() {
 
-	spatialContrastMap = Mat::zeros( size, CV_32FC1 );
 	superpixelSpatialContrast = vector<double>( superPixelNum, 0 );
 
 	for ( int i = 0; i < superPixelNum; i++ ) {
@@ -157,23 +160,103 @@ void KeyFrame::CalcSpatialContrast() {
 		}
 	}
 
-#ifdef DEBUG
-	//cout << "Before:" << endl;
-	//for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
-	normalizeVec( superpixelSpatialContrast );
-	//cout << "After:" << endl;
-	//for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
-
-	for ( int y = 0; y < rows; y++ ) {
-		for ( int x = 0; x < cols; x++ ) {
-			spatialContrastMap.at<float>( y, x ) = superpixelSpatialContrast[pixelLabel.at<int>( y, x )];
-		}
+	for ( int i = 0; i < superPixelNum; i++ ) {
+		superpixelSpatialContrast[i] *= superpixelCard[i];
 	}
-	imshow( "Spatial Contrast Map", spatialContrastMap );
-	waitKey( 1 );
+	
+#ifdef DEBUG
+	////cout << "Before:" << endl;
+	////for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
+	//NormalizeVec( superpixelSpatialContrast );
+	////cout << "After:" << endl;
+	////for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
+
+	//spatialContrastMap = Mat::zeros( size, CV_32FC1 );
+
+	//for ( int y = 0; y < rows; y++ ) {
+	//	for ( int x = 0; x < cols; x++ ) {
+	//		spatialContrastMap.at<float>( y, x ) = superpixelSpatialContrast[pixelLabel.at<int>( y, x )];
+	//	}
+	//}
+	//imshow( "Spatial Contrast Map", spatialContrastMap );
+	//waitKey( 1 );
 #endif
 }
 
 void KeyFrame::CalcTemporalContrast() {
 
+	superpixelTemporalContrast = vector<double>( superPixelNum, 0 );
+
+	if ( !opFlag ) {
+		for ( int y = 0; y < rows; y++ ) {
+			for ( int x = 0; x < cols; x++ ) {
+				int label = pixelLabel.at<int>( y, x );
+				superpixelTemporalContrast[label] += NormL2( backwardLocalMotionMap.at<Point2f>( y, x ) );
+			}
+		}
+	}
+
+	if ( !edFlag ) {
+		for ( int y = 0; y < rows; y++ ) {
+			for ( int x = 0; x < cols; x++ ) {
+				int label = pixelLabel.at<int>( y, x );
+				superpixelTemporalContrast[label] += NormL2( forwardLocalMotionMap.at<Point2f>( y, x ) );
+			}
+		}
+	}
+
+	if ( !(opFlag || edFlag) ) {
+		for ( auto &item : superpixelTemporalContrast ) {
+			item /= 2;
+		}
+	}
+	
+#ifdef DEBUG
+	////cout << "Before:" << endl;
+	////for ( auto ele : superpixelTemporalContrast ) cout << ele << endl;
+	//NormalizeVec( superpixelTemporalContrast );
+	////cout << "After:" << endl;
+	////for ( auto ele : superpixelTemporalContrast ) cout << ele << endl;
+
+	//temporalContrastMap = Mat::zeros( size, CV_32FC1 );
+
+	//for ( int y = 0; y < rows; y++ ) {
+	//	for ( int x = 0; x < cols; x++ ) {
+	//		int label = pixelLabel.at<int>( y, x );
+	//		temporalContrastMap.at<float>( y, x ) = superpixelTemporalContrast[label];
+	//	}
+	//}
+	//imshow( "Motion Contrast Map", temporalContrastMap );
+	//waitKey( 1 );
+#endif
+
+}
+
+void KeyFrame::CalcSaliencyMap() {
+
+	superpixelSaliency = vector<double>( superPixelNum, 0 );
+
+	for ( int i = 0; i < superPixelNum; i++ ) {
+		superpixelSaliency[i] = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
+#ifdef DEBUG
+		double tmp1 = superpixelSpatialContrast[i] + superpixelTemporalContrast[i];
+		double tmp2 = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
+		printf( "Spatial: %.3lf, Temporal: %.3lf, Plus: %.3lf, Multi: %.3lf\n", superpixelSpatialContrast[i], superpixelTemporalContrast[i], tmp1, tmp2 );
+#endif DEBUG
+	}
+
+	NormalizeVec( superpixelSaliency );
+
+	saliencyMap = Mat::zeros( size, CV_32FC1 );
+
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			int label = pixelLabel.at<int>( y, x );
+			saliencyMap.at<float>( y, x ) = superpixelSaliency[label];
+		}
+	}
+#ifdef DEBUG
+	imshow( "Saliency Map", saliencyMap );
+	waitKey( 0 );
+#endif
 }

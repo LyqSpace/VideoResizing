@@ -33,7 +33,7 @@ struct TypeColorSpace {
 };
 
 template<class T, size_t N>
-bool checkEleExist( const T( &eleArray )[N], const string &eleVal ) {
+bool CheckEleExist( const T( &eleArray )[N], const string &eleVal ) {
 	if ( find( begin( eleArray ), end( eleArray ), eleVal ) != end( eleArray ) ) {
 		return true;
 	} else {
@@ -42,7 +42,7 @@ bool checkEleExist( const T( &eleArray )[N], const string &eleVal ) {
 }
 
 template<class T>
-void normalizeVec( vector<T> &vec ) {
+void NormalizeVec( vector<T> &vec ) {
 	T eleMin = INF;
 	T eleMax = -INF;
 	for ( auto ele : vec ) {
@@ -53,6 +53,16 @@ void normalizeVec( vector<T> &vec ) {
 	for ( auto &ele : vec ) {
 		ele = (ele - eleMin) / eleSpan;
 	}
+}
+
+template<class T>
+double NormL2( const T &p0, const T &p1 ) {
+	return sqrt( sqr( p0.x - p1.x ) + sqr( p0.y - p1.y ) );
+}
+
+template<class T>
+double NormL2( const T &p ) {
+	return sqrt( sqr( p.x ) + sqr( p.y ) );
 }
 
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );

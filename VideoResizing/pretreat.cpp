@@ -84,7 +84,7 @@ void SegFramesToShotCutKeyFrames() {
 
 }
 
-void DrawOpticalFlow( const Mat &flowMat, const Mat &frame ) {
+void DrawOpticalFlow( const Mat &flowMat, const Mat &frame, string windowName ) {
 	
 	Mat img = frame.clone();
 	int step = 10;
@@ -96,7 +96,7 @@ void DrawOpticalFlow( const Mat &flowMat, const Mat &frame ) {
 			circle( img, Point( x, y ), 2, Scalar( 0, 0, 255 ) );
 		}
 	}
-	imshow( "Optical Flow", img );
+	imshow( windowName, img );
 	waitKey( 1 );
 
 }
@@ -222,19 +222,57 @@ void CalcSuperpixel( vector<KeyFrame> &frames ) {
 	}
 }
 
+void CalcMotion( const Mat &flowMap, Mat &localMotionMap, Point2f &globalMotion ) {
+
+	globalMotion = Point2f( 0, 0 );
+	for ( int y = 0; y < flowMap.rows; y++ ) {
+		for ( int x = 0; x < flowMap.cols; x++ ) {
+			Point2f flow = flowMap.at<Point2f>( y, x );
+			globalMotion.x += flow.x;
+			globalMotion.y += flow.y;
+		}
+	}
+
+	globalMotion.x /= (flowMap.rows * flowMap.cols);
+	globalMotion.y /= (flowMap.rows * flowMap.cols);
+
+	localMotionMap = Mat::zeros( flowMap.size(), CV_32FC2 );
+	for ( int y = 0; y < localMotionMap.rows; y++ ) {
+		for ( int x = 0; x < localMotionMap.cols; x++ ) {
+			Point2f flow = flowMap.at<Point2f>( y, x );
+			Point2f localMotion = Point2f( flow.x - globalMotion.x, flow.y - globalMotion.y );
+			localMotionMap.at<Point2f>( y, x ) = localMotion;
+		}
+	}
+}
+
 void CalcSaliencyMap( vector<KeyFrame> &frames ) {
 
 	printf( "Calculate key frames saliency map.\n" );
 
-	printf( "\tCalculate temporal contrast.\n" );
+	printf( "\tCalculate optical flow.\n" );
+
 	for ( size_t i = 1; i < frames.size(); i++ ) {
 
-		calcOpticalFlowFarneback( frames[i - 1].grayImg, frames[i].grayImg, frames[i - 1].flowMap, 0.5, 3, 15, 3, 5, 1.2, 0 );
-		frames[i].flowMap = -frames[i - 1].flowMap;
+		calcOpticalFlowFarneback( frames[i - 1].grayImg, frames[i].grayImg, frames[i - 1].forwardFlowMap, 0.5, 3, 15, 3, 5, 1.2, 0 );
+		
+		Mat forwardLocalMotionMap;
+		Point2f forwardGlobalMotion;
+		CalcMotion( frames[i - 1].forwardFlowMap, forwardLocalMotionMap, forwardGlobalMotion );
 
-		DrawOpticalFlow( frames[i - 1].flowMap, frames[i - 1].img );
+		frames[i - 1].forwardLocalMotionMap = forwardLocalMotionMap.clone();
+		frames[i - 1].forwardGlobalMotion = forwardGlobalMotion;
+
+		frames[i].backwardFlowMap = -frames[i - 1].forwardFlowMap;
+		frames[i].backwardGlobalMotion = -forwardGlobalMotion;
+		frames[i].backwardLocalMotionMap = -forwardLocalMotionMap;
+
+		// DrawOpticalFlow( frames[i - 1].forwardFlowMap, frames[i - 1].img, "Flow Ma/*p" );
+		// DrawOpticalFlow( frames[i - 1].forwardLocalMotionMap, frames[i - 1].img, "Local Motion M*/ap" );
 
 	}
+
+	printf( "\tCalculate temporal contrast.\n" );
 
 	for ( auto &frame : frames ) {
 		frame.CalcTemporalContrast();
@@ -244,6 +282,10 @@ void CalcSaliencyMap( vector<KeyFrame> &frames ) {
 
 	for ( auto &frame : frames ) {
 		frame.CalcSpatialContrast();
+	}
+
+	for ( auto &frame : frames ) {
+		frame.CalcSaliencyMap();
 	}
 
 }

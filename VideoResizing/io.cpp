@@ -65,15 +65,18 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 
 		string frameName( "frames/" + to_string( keyId ) + ".png" );
 		Mat frame = imread( frameName );
-		KeyFrame keyFrame( frame );
+		KeyFrame keyFrame( frame, keyId );
 		keyFrames.push_back( keyFrame );
 
 	}
 
 	string frameName( "frames/" + to_string( shotEd - 1 ) + ".png" );
 	Mat frame = imread( frameName );
-	KeyFrame keyFrame( frame );
+	KeyFrame keyFrame( frame, shotEd - 1 );
 	keyFrames.push_back( keyFrame );
+
+	keyFrames.front().opFlag = true;
+	keyFrames.back().edFlag = true;
 
 }
 

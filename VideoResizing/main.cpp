@@ -26,7 +26,7 @@ int main( int argc, char *argv[] ) {
 
 	// video_name run_type
 	if ( argc == 3 ) {
-		if (!checkEleExist(runTypeArray, argv[2])) {
+		if (!CheckEleExist(runTypeArray, argv[2])) {
 			cerr << "Wrong runType argument.";
 		}
 		runType = argv[2];
