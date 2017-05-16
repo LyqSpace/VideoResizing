@@ -1,21 +1,35 @@
 #ifndef KEYFRAME_H
 #define KEYFRAME_H
 
-#include <ctime>
+#include <cmath>
 #include "common.h"
 #include "slic.h"
 
 class KeyFrame {
 private:
-	Mat img, grayImg, imgWithContours;
-	Mat pixelLabel;
-	int cols, rows;
+	Mat imgWithContours, spatialContrastMap;
+	Mat pixelLabel, paletteMap, paletteDist;
+
+	vector<Vec3f> palette;
+	vector< vector<int> > superpixelColorHist;
+	vector<int> superpixelCard;
+	vector<Point> superpixelCenter;
+	vector<double> superpixelSpatialContrast;
+
+	double CalcColorHistDiff( int, int );
+	double CalcSpatialDiff( int, int );
+	
 public:
-	int superPixelNum;
+	Mat img, CIELabImg, grayImg, flowMap;
+	int cols, rows, superPixelNum;
+	Size size;
 
 	KeyFrame( const Mat & );
 	void SegSuperpixel();
-
+	void QuantizeColorSpace( const vector<Vec3f> &, const Mat & );
+	void CalcSuperpixelColorHist();
+	void CalcSpatialContrast();
+	void CalcTemporalContrast();
 };
 
 #endif

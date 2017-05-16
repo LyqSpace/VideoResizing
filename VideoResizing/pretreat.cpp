@@ -97,43 +97,153 @@ void DrawOpticalFlow( const Mat &flowMat, const Mat &frame ) {
 		}
 	}
 	imshow( "Optical Flow", img );
+	waitKey( 1 );
 
 }
 
-void CalcSalientMap( const vector<KeyFrame> &keyFrames ) {
-/*
-	vector<Mat> dxMatArr;
-	Mat preGrayMat;
-	int count = 0;
-	int canny_thres = 70;
+bool CmpVec3f0( const Vec3f &c0, const Vec3f &c1 ) {
+	return c0.val[0] < c1.val[0];
+}
 
-	for ( auto frame : keyFrames ) {
+bool CmpVec3f1( const Vec3f &c0, const Vec3f &c1 ) {
+	return c0.val[0] < c1.val[0];
+}
 
-		Mat grayMat, edgeMat, flowMat;
+bool CmpVec3f2( const Vec3f &c0, const Vec3f &c1 ) {
+	return c0.val[0] < c1.val[0];
+}
 
-		cvtColor( frame, grayMat, CV_BGR2GRAY );
-		blur( grayMat, edgeMat, Size( 3, 3 ) );
-		Canny( edgeMat, edgeMat, canny_thres, canny_thres * 3 );
+void CalcPalette( const vector<KeyFrame> &frames, vector< Vec3f> &palette ) {
 
-		imshow( "Canny", edgeMat );
+	vector<Vec3f> colorSet;
 
-		if ( count > 0 ) {
-			calcOpticalFlowFarneback( preGrayMat, grayMat, flowMat, 0.5, 3, 30, 3, 5, 1.2, OPTFLOW_FARNEBACK_GAUSSIAN );
-			DrawOpticalFlow( flowMat, frame );
+	for ( auto const &frame : frames ) {
+		for ( int y = 0; y < frame.rows; y += 10 ) {
+			for ( int x = 0; x < frame.cols; x += 10 ) {
+				colorSet.push_back( frame.CIELabImg.at<Vec3f>( y, x ) );
+			}
+		}
+	}
+	
+	vector< vector<Vec3f> > medianCutQue;
+	medianCutQue.push_back( colorSet );
+
+	for ( int level = 0; level < QUANTIZE_LEVEL; level++ ) {
+
+		vector< vector<Vec3f> > tmpQue;
+
+		for ( size_t i = 0; i < medianCutQue.size(); i++ ) {
+
+			Vec3f minColor( 255, 255, 255 );
+			Vec3f maxColor( 0, 0, 0 );
+			for ( size_t j = 0; j < medianCutQue[i].size(); j++ ) {
+				for ( int k = 0; k < 3; k++ ) {
+					minColor.val[k] = min( minColor.val[k], medianCutQue[i][j].val[k] );
+					maxColor.val[k] = max( maxColor.val[k], medianCutQue[i][j].val[k] );
+				}
+			}
+
+			int cut_dimension = 0;
+			double max_range = 0;
+			for ( int k = 0; k < 3; k++ ) {
+				if ( maxColor.val[k] - minColor.val[k] > max_range ) {
+					max_range = maxColor.val[k] - minColor.val[k];
+					cut_dimension = k;
+				}
+			}
+
+			switch ( cut_dimension ) {
+				case 0:
+					sort( medianCutQue[i].begin(), medianCutQue[i].end(), CmpVec3f0 );
+					break;
+				case 1:
+					sort( medianCutQue[i].begin(), medianCutQue[i].end(), CmpVec3f1 );
+					break;
+				case 2:
+					sort( medianCutQue[i].begin(), medianCutQue[i].end(), CmpVec3f2 );
+					break;
+				default:
+					cout << "error in cut" << endl;
+					exit( 0 );
+			}
+
+			int mid_pos = medianCutQue[i].size() / 2;
+			vector<Vec3f> part0( medianCutQue[i].begin(), medianCutQue[i].begin() + mid_pos );
+			vector<Vec3f> part1( medianCutQue[i].begin() + mid_pos, medianCutQue[i].end() );
+
+			tmpQue.push_back( part0 );
+			tmpQue.push_back( part1 );
 		}
 
-		preGrayMat = grayMat.clone();
+		medianCutQue = tmpQue;
+	}
 
-		count++;
+	palette.clear();
+	for ( size_t i = 0; i < medianCutQue.size(); i++ ) {
 
-		imshow( "input", frame );
-
-		waitKey( 1 );
-	}*/
+		Vec3f meanColor = medianCutQue[i][medianCutQue[i].size() >> 1];
+		palette.push_back( meanColor );
+	}
 }
 
-void CalcSuperpixel( const vector<KeyFrame> &keyFrames ) {
-	for ( auto keyFrame : keyFrames ) {
-		keyFrame.SegSuperpixel();
+void QuantizeFrames( vector<KeyFrame> &frames ) {
+
+	printf( "Quantize key frames color space.\n" );
+
+	printf( "\tCalculate palette.\n" );
+
+	vector< Vec3f> palette;
+	CalcPalette( frames, palette );
+
+	int paletteSize = palette.size();
+	Mat paletteDist = Mat::zeros( paletteSize, paletteSize, CV_32FC1 );
+	for ( size_t c1 = 0; c1 < palette.size(); c1++ ) {
+		for ( size_t c2 = c1 + 1; c2 < palette.size(); c2++ ) {
+			paletteDist.at<float>( c1, c2 ) = CalcVec3fDiff( palette[c1], palette[c2] );
+			paletteDist.at<float>( c2, c1 ) = paletteDist.at<float>( c1, c2 );
+		}
 	}
+
+	printf( "\tQuantize each frames.\n" );
+
+	for ( auto &frame : frames ) {
+		frame.QuantizeColorSpace(palette, paletteDist);
+	}
+}
+
+void CalcSuperpixel( vector<KeyFrame> &frames ) {
+
+	printf( "Calculate key frames superpixels.\n" );
+
+	for ( auto &frame : frames ) {
+		frame.SegSuperpixel();
+		frame.CalcSuperpixelColorHist();
+		
+	}
+}
+
+void CalcSaliencyMap( vector<KeyFrame> &frames ) {
+
+	printf( "Calculate key frames saliency map.\n" );
+
+	printf( "\tCalculate temporal contrast.\n" );
+	for ( size_t i = 1; i < frames.size(); i++ ) {
+
+		calcOpticalFlowFarneback( frames[i - 1].grayImg, frames[i].grayImg, frames[i - 1].flowMap, 0.5, 3, 15, 3, 5, 1.2, 0 );
+		frames[i].flowMap = -frames[i - 1].flowMap;
+
+		DrawOpticalFlow( frames[i - 1].flowMap, frames[i - 1].img );
+
+	}
+
+	for ( auto &frame : frames ) {
+		frame.CalcTemporalContrast();
+	}
+
+	printf( "\tCalculate spatial contrast.\n" );
+
+	for ( auto &frame : frames ) {
+		frame.CalcSpatialContrast();
+	}
+
 }

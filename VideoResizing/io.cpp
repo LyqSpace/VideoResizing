@@ -56,12 +56,12 @@ void ReadKeyArr( vector<int> &keyArr ) {
 
 void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<KeyFrame> &keyFrames ) {
 
+	printf( "Read key frames. Shotcut range: %d to %d.\n", shotSt, shotEd );
+
 	for ( auto keyId : keyArr ) {
 		
 		if ( keyId < shotSt ) continue;
 		if ( keyId >= shotEd ) break;
-
-		printf( "Reading key frames. Key frame: %d\r", keyId );
 
 		string frameName( "frames/" + to_string( keyId ) + ".png" );
 		Mat frame = imread( frameName );
@@ -69,8 +69,6 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 		keyFrames.push_back( keyFrame );
 
 	}
-
-	printf( "Reading key frames. Key frame: %d\n", shotEd - 1 );
 
 	string frameName( "frames/" + to_string( shotEd - 1 ) + ".png" );
 	Mat frame = imread( frameName );
