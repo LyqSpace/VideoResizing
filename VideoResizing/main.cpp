@@ -1,7 +1,7 @@
 /*
 *	Copyright (C)   Lyq root#lyq.me
 *	File Name     : main.cpp
-*	Creation Time : 2v  017-3-25
+*	Creation Time : 2017-3-25
 *	Environment   : Windows8.1-64bit VS2013 OpenCV2.4.9
 *	Homepage      : http://www.lyq.me
 */
@@ -10,33 +10,39 @@
 #include "common.h"
 #include "io.h"
 #include "pretreat.h"
+#include "saliency.h"
 #include "KeyFrame.h"
+#include "Deformation.h"
 
 int main( int argc, char *argv[] ) {
 
-	if ( argc < 2 ) {
+	if ( argc < 5 ) {
 		cerr << "Missing arguments.";
 		return -2;
 	}
 
+	// Get video name
 	string videoName = argv[1];
 	
-	const string runTypeArray[3] = { "all", "resize", "render" };
-	string runType(runTypeArray[0]);
-
-	// video_name run_type
-	if ( argc == 3 ) {
-		if (!CheckEleExist(runTypeArray, argv[2])) {
-			cerr << "Wrong runType argument.";
-		}
-		runType = argv[2];
+	// Get run_type
+	const string runTypeArray[4] = { "all", "import", "resize", "export" };
+	string runType;
+	
+	if (!CheckEleExist(runTypeArray, argv[2])) {
+		cerr << "Wrong runType argument.";
 	}
+	runType = argv[2];
+
+	// Get deformed scale.
+	double deformedScaleX, deformedScaleY;
+	deformedScaleX = atof( argv[3] );
+	deformedScaleY = atof( argv[4] );
 
 	/*
 	1. Convert video to frames.
 	2. Segment frames to shotcut and keyframes.
 	*/
-	if ( runType == "all" ) {
+	if ( runType == "all" || runType == "import" ) {
 		ConvertVideoToFrames( videoName );
 		SegFramesToShotCutKeyFrames();
 	}
@@ -66,7 +72,16 @@ int main( int argc, char *argv[] ) {
 
 			QuantizeFrames( keyFrames );
 			CalcSuperpixel( keyFrames );
+
 			CalcSaliencyMap( keyFrames );
+			SmoothSaliencyMap( keyFrames );
+
+			Deformation deformation( keyFrames );
+			deformation.BuildControlPoints();
+			deformation.InitDeformation( deformedScaleX, deformedScaleY );
+			deformation.MinimizeEnergy();
+			deformation.CalcDeformedMap();
+			deformation.RenderKeyFrames();
 
 			vector<Mat> frames;
 			ReadFrames( shotArr[i - 1], shotArr[i], frames );

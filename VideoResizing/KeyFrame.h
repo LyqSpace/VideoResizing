@@ -6,14 +6,15 @@
 #include "slic.h"
 
 class KeyFrame {
+
 private:
 	Mat imgWithContours, spatialContrastMap, temporalContrastMap;
-	Mat pixelLabel, paletteMap, paletteDist;
+	Mat paletteMap, paletteDist;
 
 	vector<Vec3f> palette;
 	vector< vector<int> > superpixelColorHist;
 	vector<int> superpixelCard;
-	vector<Point> superpixelCenter;
+	
 	vector<double> superpixelSpatialContrast, superpixelTemporalContrast, superpixelSaliency;
 
 	double CalcColorHistDiff( int, int );
@@ -21,12 +22,15 @@ private:
 	
 public:
 	Mat img, CIELabImg, grayImg;
+	Mat pixelLabel;
 	Mat forwardFlowMap, backwardFlowMap, forwardLocalMotionMap, backwardLocalMotionMap;
 	Mat saliencyMap;
-	int frameId, cols, rows, superPixelNum;
+	int frameId, cols, rows, superpixelNum;
 	Size size;
 	Point2f forwardGlobalMotion, backwardGlobalMotion;
 	bool opFlag, edFlag;
+
+	vector<Point> superpixelCenter;
 
 	KeyFrame( const Mat &, int );
 	void SegSuperpixel();

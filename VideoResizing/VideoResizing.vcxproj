@@ -79,17 +79,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="common.cpp" />
+    <ClCompile Include="ControlPoint.cpp" />
+    <ClCompile Include="Deformation.cpp" />
     <ClCompile Include="io.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pretreat.cpp" />
     <ClCompile Include="KeyFrame.cpp" />
+    <ClCompile Include="saliency.cpp" />
     <ClCompile Include="slic.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h" />
+    <ClInclude Include="ControlPoint.h" />
+    <ClInclude Include="Deformation.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="pretreat.h" />
     <ClInclude Include="KeyFrame.h" />
+    <ClInclude Include="saliency.h" />
     <ClInclude Include="slic.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

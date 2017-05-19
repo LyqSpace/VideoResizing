@@ -6,8 +6,6 @@
 
 void SegFramesToShotCutKeyFrames();
 
-void DrawOpticalFlow( const Mat &, const Mat & );
-
 void CalcSuperpixel( vector<KeyFrame> & );
 
 bool CmpVec3f0( const Vec3f &, const Vec3f & );
@@ -19,7 +17,5 @@ bool CmpVec3f2( const Vec3f &, const Vec3f & );
 void CalcPalette( const vector<KeyFrame> &, vector<Vec3f> & );
 
 void QuantizeFrames( vector<KeyFrame> & );
-
-void CalcSaliencyMap( vector<KeyFrame> & );
 
 #endif

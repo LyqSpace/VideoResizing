@@ -14,7 +14,7 @@ KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 	img.convertTo( CIELabImg, CV_32FC3, 1.0 / 255 );
 	cvtColor( CIELabImg, CIELabImg, COLOR_BGR2Lab );
 
-	superPixelNum = 50;
+	superpixelNum = 100;
 	opFlag = false;
 	edFlag = false;
 
@@ -95,12 +95,12 @@ void KeyFrame::SegSuperpixel() {
 	SLIC slic;
 	int *label;
 	
-	slic.GenerateSuperpixels(img, superPixelNum );
+	slic.GenerateSuperpixels(img, superpixelNum );
 	
-	superpixelCard = vector<int>( superPixelNum, 0 );
-	superpixelCenter = vector<Point>( superPixelNum, Point( 0, 0 ) );
+	superpixelCard = vector<int>( superpixelNum, 0 );
+	superpixelCenter = vector<Point>( superpixelNum, Point( 0, 0 ) );
 	label = slic.GetLabel();
-	superPixelNum = 0;
+	superpixelNum = 0;
 	for ( int y = 0; y < rows; y++ ) {
 		for ( int x = 0; x < cols; x++ ) {
 			int pointIndex = y * cols + x;
@@ -108,19 +108,19 @@ void KeyFrame::SegSuperpixel() {
 			pixelLabel.at<int>( Point( x, y ) ) = labelIndex;
 			superpixelCard[labelIndex]++;
 			superpixelCenter[labelIndex] += Point( x, y );
-			superPixelNum = max( superPixelNum, labelIndex );
+			superpixelNum = max( superpixelNum, labelIndex );
 		}
 	}
 
-	superPixelNum++;
+	superpixelNum++;
 
-	for ( int i = 0; i < superPixelNum; i++ ) {
+	for ( int i = 0; i < superpixelNum; i++ ) {
 		superpixelCenter[i].x /= superpixelCard[i];
 		superpixelCenter[i].y /= superpixelCard[i];
 	}
 	
 #ifdef DEBUG
-	//cout << "Superpixel Num: " << superPixelNum << endl;
+	//cout << "Superpixel Num: " << superpixelNum << endl;
 	/*imgWithContours = slic.GetImgWithContours( cv::Scalar( 0, 0, 255 ) );
 	imshow( "Img with Contours", imgWithContours );
 	waitKey( 1 );*/
@@ -130,7 +130,7 @@ void KeyFrame::SegSuperpixel() {
 
 void KeyFrame::CalcSuperpixelColorHist() {
 
-	superpixelColorHist = vector < vector<int> >( superPixelNum, vector<int>( palette.size(), 0 ) );
+	superpixelColorHist = vector < vector<int> >( superpixelNum, vector<int>( palette.size(), 0 ) );
 	for ( int y = 0; y < rows; y++ ) {
 		for ( int x = 0; x < cols; x++ ) {
 			int labelIndex = pixelLabel.at<int>( y, x );
@@ -142,10 +142,10 @@ void KeyFrame::CalcSuperpixelColorHist() {
 
 void KeyFrame::CalcSpatialContrast() {
 
-	superpixelSpatialContrast = vector<double>( superPixelNum, 0 );
+	superpixelSpatialContrast = vector<double>( superpixelNum, 0 );
 
-	for ( int i = 0; i < superPixelNum; i++ ) {
-		for ( int j = i + 1; j < superPixelNum; j++ ) {
+	for ( int i = 0; i < superpixelNum; i++ ) {
+		for ( int j = i + 1; j < superpixelNum; j++ ) {
 			double spatialDiff = CalcSpatialDiff( i, j );
 			double colorDiff = CalcColorHistDiff( i, j );
 
@@ -160,7 +160,7 @@ void KeyFrame::CalcSpatialContrast() {
 		}
 	}
 
-	for ( int i = 0; i < superPixelNum; i++ ) {
+	for ( int i = 0; i < superpixelNum; i++ ) {
 		superpixelSpatialContrast[i] *= superpixelCard[i];
 	}
 	
@@ -185,7 +185,7 @@ void KeyFrame::CalcSpatialContrast() {
 
 void KeyFrame::CalcTemporalContrast() {
 
-	superpixelTemporalContrast = vector<double>( superPixelNum, 0 );
+	superpixelTemporalContrast = vector<double>( superpixelNum, 0 );
 
 	if ( !opFlag ) {
 		for ( int y = 0; y < rows; y++ ) {
@@ -234,14 +234,14 @@ void KeyFrame::CalcTemporalContrast() {
 
 void KeyFrame::CalcSaliencyMap() {
 
-	superpixelSaliency = vector<double>( superPixelNum, 0 );
+	superpixelSaliency = vector<double>( superpixelNum, 0 );
 
-	for ( int i = 0; i < superPixelNum; i++ ) {
+	for ( int i = 0; i < superpixelNum; i++ ) {
 		superpixelSaliency[i] = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
 #ifdef DEBUG
-		double tmp1 = superpixelSpatialContrast[i] + superpixelTemporalContrast[i];
+		/*double tmp1 = superpixelSpatialContrast[i] + superpixelTemporalContrast[i];
 		double tmp2 = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
-		printf( "Spatial: %.3lf, Temporal: %.3lf, Plus: %.3lf, Multi: %.3lf\n", superpixelSpatialContrast[i], superpixelTemporalContrast[i], tmp1, tmp2 );
+		printf( "Spatial: %.3lf, Temporal: %.3lf, Plus: %.3lf, Multi: %.3lf\n", superpixelSpatialContrast[i], superpixelTemporalContrast[i], tmp1, tmp2 );*/
 #endif DEBUG
 	}
 
@@ -256,7 +256,7 @@ void KeyFrame::CalcSaliencyMap() {
 		}
 	}
 #ifdef DEBUG
-	imshow( "Saliency Map", saliencyMap );
-	waitKey( 0 );
+	//imshow( "Saliency Map", saliencyMap );
+	//waitKey( 1 );
 #endif
 }
