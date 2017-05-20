@@ -15,7 +15,7 @@ private:
 	vector< vector<int> > superpixelColorHist;
 	vector<int> superpixelCard;
 	
-	vector<double> superpixelSpatialContrast, superpixelTemporalContrast, superpixelSaliency;
+	vector<double> superpixelSpatialContrast, superpixelTemporalContrast;
 
 	double CalcColorHistDiff( int, int );
 	double CalcSpatialDiff( int, int );
@@ -24,7 +24,10 @@ public:
 	Mat img, CIELabImg, grayImg;
 	Mat pixelLabel;
 	Mat forwardFlowMap, backwardFlowMap, forwardLocalMotionMap, backwardLocalMotionMap;
+
 	Mat saliencyMap;
+	vector<double> superpixelSaliency;
+
 	int frameId, cols, rows, superpixelNum;
 	Size size;
 	Point2f forwardGlobalMotion, backwardGlobalMotion;
@@ -39,6 +42,10 @@ public:
 	void CalcSpatialContrast();
 	void CalcTemporalContrast();
 	void CalcSaliencyMap();
+	void SumSuperpixelSaliency();
+
+	void FreeMemory();
+
 };
 
 #endif

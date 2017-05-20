@@ -157,6 +157,8 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 		//waitKey( 1 );
 #endif
 		frames[i].saliencyMap = smoothedSaliencyMapVec[i].clone();
+		frames[i].SumSuperpixelSaliency();
+
 	}
 
 }

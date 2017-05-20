@@ -25,7 +25,7 @@ const int QUANTIZE_LEVEL = 5;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;
-
+const int MIN_ENERGY_ITERS = 200;
 
 template<class T, size_t N>
 bool CheckEleExist( const T( &eleArray )[N], const string &eleVal ) {

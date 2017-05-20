@@ -20,6 +20,24 @@ KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 
 }
 
+void KeyFrame::FreeMemory() {
+
+	imgWithContours.release();
+	spatialContrastMap.release();
+	temporalContrastMap.release();
+	paletteMap.release();
+	paletteDist.release();
+
+	palette.clear();
+	superpixelColorHist.clear();
+	superpixelSpatialContrast.clear();
+	superpixelTemporalContrast.clear();
+
+	forwardLocalMotionMap.release();
+	backwardLocalMotionMap.release();
+
+}
+
 double KeyFrame::CalcColorHistDiff( int spId0, int spId1 ) {
 
 	vector<int> sp0 = superpixelColorHist[spId0];
@@ -259,4 +277,23 @@ void KeyFrame::CalcSaliencyMap() {
 	//imshow( "Saliency Map", saliencyMap );
 	//waitKey( 1 );
 #endif
+}
+
+void KeyFrame::SumSuperpixelSaliency() {
+
+	superpixelSaliency = vector<double>( superpixelNum, 0 );
+
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			int label = pixelLabel.at<int>( y, x );
+			superpixelSaliency[label] += saliencyMap.at<float>( y, x );
+		}
+	}
+
+	for ( int i = 0; i < superpixelNum; i++ ) {
+		superpixelSaliency[i] /= superpixelCard[i];
+	}
+
+	NormalizeVec( superpixelSaliency );
+
 }

@@ -7,12 +7,14 @@ ControlPoint::ControlPoint() {
 	temporalNeighbors.clear();
 }
 
-ControlPoint::ControlPoint( int _frameId, const Point2f &_pos, int _anchorType ) {
+ControlPoint::ControlPoint( int _frameId, const Point2f &_pos, int _anchorType, int _superpixelIndex, double _saliency ) {
 
 	frameId = _frameId;
 	originPos = _pos;
 	pos = _pos;
 	anchorType = _anchorType;
+	superpixelIndex = _superpixelIndex;
+	saliency = _saliency;
 
 	spatialNeighbors.clear();
 	temporalNeighbors.clear();
