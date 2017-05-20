@@ -22,3 +22,13 @@ Point2f StringToPoint2f( const string &str ) {
 Point Point2fToPoint( const Point2f &p ) {
 	return Point( RoundToInt( p.x ), RoundToInt( p.y ) );
 }
+
+void RestrictInside( Point2f &p, Size &size ) {
+	p.x = max( 0.0f, min( size.width - 1.0f, p.x ) );
+	p.y = max( 0.0f, min( size.height - 1.0f, p.y ) );
+}
+
+void RestrictInside( Point &p, Size &size ) {
+	p.x = max( 0, min( size.width - 1, p.x ) );
+	p.y = max( 0, min( size.height - 1, p.y ) );
+}

@@ -5,6 +5,8 @@
 #define DEBUG
 
 #include <string>
+#include <cstdlib>
+#include <algorithm>
 #include <opencv2\opencv.hpp>
 
 using namespace std;
@@ -14,6 +16,8 @@ const double INF = 1e10;
 const double eps = 1e-8;
 const double resize_rate = 0.6;
 const int DIRECTIONS_NUM = 8;
+const double ITER_TERMINATE = 0.01;
+const int MIN_ENERGY_ITERS = 200;
 const Point directions[DIRECTIONS_NUM] = {
 	Point( 0, 1 ), Point( 1, 0 ), Point( -1, 0 ), Point( 0, -1 ), 
 	Point( 1, 1 ), Point( 1, -1 ), Point( -1, 1 ), Point( -1, -1 ) 
@@ -25,7 +29,7 @@ const int QUANTIZE_LEVEL = 5;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;
-const int MIN_ENERGY_ITERS = 200;
+
 
 template<class T, size_t N>
 bool CheckEleExist( const T( &eleArray )[N], const string &eleVal ) {
@@ -102,5 +106,9 @@ string Point2fToString( const Point2f & );
 Point2f StringToPoint2f( const string & );
 
 Point Point2fToPoint( const Point2f & );
+
+void  RestrictInside( Point2f &p, Size &size );
+
+void  RestrictInside( Point &p, Size &size );
 
 #endif

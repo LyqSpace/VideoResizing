@@ -84,7 +84,7 @@ void ReadFrames( int shotSt, int shotEd, vector<Mat> &frames ) {
 
 	for ( int i = shotSt; i < shotEd; i++ ) {
 		
-		printf( "Reading frames. Progress rate %d/%d\r", i - shotSt, shotEd - shotSt - 1 );
+		printf( "Reading frames. Progress rate %d/%d.\r", i - shotSt, shotEd - shotSt - 1 );
 
 		string frameName( "frames/" + to_string( i ) + ".png" );
 		Mat frame = imread( frameName );
