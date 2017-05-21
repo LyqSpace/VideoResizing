@@ -15,7 +15,7 @@ private:
 	int frameNum;
 	Size frameSize;
 	vector<KeyFrame> &frames;
-	vector< pair<Point2f, int> > anchorPoints;
+	vector<Point2f> staticPoints;
 
 	int controlPointsNum;
 	vector<ControlPoint> controlPoints;
@@ -31,11 +31,6 @@ private:
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
 	void CalcBaryCooordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
-	void CalcBaryCoord3( int, int, const Point2f &, vector<BaryCoord> & );
-	void CalcBaryCoord2( int, int, const Point2f &, vector<BaryCoord> & );
-	void CalcBaryCoord1( int, int, vector<BaryCoord> & );
-	
-	int LocateSubdivPoint( int, const Point2f &, vector<BaryCoord> & );
 	int LocateNearestPoint( int, const Point2f &, vector<BaryCoord> & );
 	Point2f CalcPointByBaryCoord( const vector<BaryCoord> & );
 

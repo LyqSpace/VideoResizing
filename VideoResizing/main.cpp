@@ -78,10 +78,10 @@ int main( int argc, char *argv[] ) {
 
 			Deformation deformation( keyFrames );
 			deformation.BuildControlPoints();
-			deformation.InitDeformation( deformedScaleX, deformedScaleY );
+			/*deformation.InitDeformation( deformedScaleX, deformedScaleY );
 			deformation.MinimizeEnergy();
 			deformation.CalcDeformedMap();
-			deformation.RenderKeyFrames();
+			deformation.RenderKeyFrames();*/
 
 			vector<Mat> frames;
 			ReadFrames( shotArr[i - 1], shotArr[i], frames );
