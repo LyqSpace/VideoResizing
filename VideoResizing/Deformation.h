@@ -15,21 +15,19 @@ private:
 	int frameNum;
 	Size frameSize;
 	vector<KeyFrame> &frames;
-	vector< Subdiv2D> frameSubdiv;
 	vector< pair<Point2f, int> > anchorPoints;
-	vector< pair<Point2f, int> > staticPoints;
 
 	int controlPointsNum;
-	vector< map<string, int> > posToPointIndexMap;
 	vector<ControlPoint> controlPoints;
 	vector< vector<int> > frameControlPointIndex;
-	vector<Edge> spatialEdge;
 
 	double deformedScaleX, deformedScaleY;
 	Size deformedFrameSize;
 
+	vector<Mat> deformedFrames;
+
 	void DrawSubdiv( const Mat &, const Subdiv2D & );
-	void DrawEdge( int );
+	void DrawEdge( int, int );
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
 	void CalcBaryCooordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
@@ -41,15 +39,17 @@ private:
 	int LocateNearestPoint( int, const Point2f &, vector<BaryCoord> & );
 	Point2f CalcPointByBaryCoord( const vector<BaryCoord> & );
 
+	Point2f GetBoundPoint( int, int );
 	void DelaunayDivide();
-	void AddSpatialNeighbors();
 	void AddTemporalNeighbors();
 
 public:
 
 	enum {
 		ORIGIN_POS = 0,
-		DEFORMED_POS = 1
+		DEFORMED_POS = 1,
+		ORIGIN_POS_WITH_FRAME = 2,
+		DEFORMED_POS_WITH_FRAME = 3
 	} POS_TYPE;
 
 	vector<Mat> deformedMap;

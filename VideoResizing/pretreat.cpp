@@ -200,6 +200,7 @@ void CalcSuperpixel( vector<KeyFrame> &frames ) {
 
 	for ( auto &frame : frames ) {
 		frame.SegSuperpixel();
+		frame.MarkBoundLabel();
 		frame.CalcSuperpixelColorHist();
 		
 	}

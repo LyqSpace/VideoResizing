@@ -12,12 +12,12 @@ private:
 public:
 
 	enum {
-		ANCHOR_NONE = 0,
-		ANCHOR_STATIC = 1,
-		ANCHOR_TOP_LEFT = 2,
-		ANCHOR_TOP_RIGHT = 3,
-		ANCHOR_BOTTOM_LEFT = 4,
-		ANCHOR_BOTTOM_RIGHT = 5
+		ANCHOR_CENTER = 0x0,
+		ANCHOR_BOUND = 0x1,
+		ANCHOR_TOP_LEFT = 0x20,
+		ANCHOR_TOP_RIGHT = 0x21,
+		ANCHOR_BOTTOM_LEFT = 0x22,
+		ANCHOR_BOTTOM_RIGHT = 0x23
 	} ANCHOR_TYPE;
 
 	int frameId;
@@ -25,16 +25,17 @@ public:
 	int anchorType;
 	int superpixelIndex;
 	double saliency;
+	Point2f flow;
 
-	vector<int> spatialNeighbors;
+	vector<int> spatialBound;
 	vector< BaryCoord > temporalNeighbors;
 
 	ControlPoint();
 	ControlPoint( int, const Point2f &, int, int, double );
-	void AddSpatialNeighbor( int );
+	void AddSpatialBound( int );
 	void AddTemporalNeighbor( const vector<BaryCoord> & );
 
-	void PrintSpatialNeighbors();
+	void PrintSpatialBound();
 	void PrintTemporalNeighbors();
 
 };

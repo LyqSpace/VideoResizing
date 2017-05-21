@@ -146,6 +146,36 @@ void KeyFrame::SegSuperpixel() {
 
 }
 
+void KeyFrame::MarkBoundLabel() {
+
+	superpixelBoundLabel = vector<int>( superpixelNum, BOUND_NONE );
+
+	for ( int y = 0; y < rows; y++ ) {
+
+		int label;
+
+		label = pixelLabel.at<int>( y, 0 );
+		superpixelBoundLabel[label] = BOUND_LEFT;
+
+		label = pixelLabel.at<int>( y, cols - 1 );
+		superpixelBoundLabel[label] = BOUND_RIGHT;
+
+	}
+
+	for ( int x = 0; x < cols; x++ ) {
+
+		int label;
+
+		label = pixelLabel.at<int>( 0, x );
+		superpixelBoundLabel[label] = BOUND_TOP;
+
+		label = pixelLabel.at<int>( rows - 1, x );
+		superpixelBoundLabel[label] = BOUND_BOTTOM;
+
+	}
+
+}
+
 void KeyFrame::CalcSuperpixelColorHist() {
 
 	superpixelColorHist = vector < vector<int> >( superpixelNum, vector<int>( palette.size(), 0 ) );

@@ -21,9 +21,20 @@ private:
 	double CalcSpatialDiff( int, int );
 	
 public:
+
+	enum {
+		BOUND_NONE = 0,
+		BOUND_LEFT = 1,
+		BOUND_TOP = 2,
+		BOUND_RIGHT = 3,
+		BOUND_BOTTOM = 4
+	} BOUND_LABEL;
+
 	Mat img, CIELabImg, grayImg;
 	Mat pixelLabel;
 	Mat forwardFlowMap, backwardFlowMap, forwardLocalMotionMap, backwardLocalMotionMap;
+
+	vector<int> superpixelBoundLabel;
 
 	Mat saliencyMap;
 	vector<double> superpixelSaliency;
@@ -37,6 +48,7 @@ public:
 
 	KeyFrame( const Mat &, int );
 	void SegSuperpixel();
+	void MarkBoundLabel();
 	void QuantizeColorSpace( const vector<Vec3f> &, const Mat & );
 	void CalcSuperpixelColorHist();
 	void CalcSpatialContrast();
