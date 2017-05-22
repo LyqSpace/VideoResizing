@@ -56,7 +56,7 @@ void ReadKeyArr( vector<int> &keyArr ) {
 
 void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<KeyFrame> &keyFrames ) {
 
-	printf( "Read key frames. %d key frames. Shotcut range: %d to %d.\n", keyArr.size() + 1, shotSt, shotEd );
+	printf( "Read key frames. Shotcut range: %d to %d. ", shotSt, shotEd );
 
 	for ( auto keyId : keyArr ) {
 		
@@ -69,7 +69,7 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 		keyFrames.push_back( keyFrame );
 
 #ifdef DEBUG
-		if ( keyFrames.size() > 5 ) break;
+		if ( keyFrames.size() > 1 ) break;
 #endif
 	}
 
@@ -80,6 +80,8 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 
 	keyFrames.front().opFlag = true;
 	keyFrames.back().edFlag = true;
+
+	printf( "%d key frames.\n", keyFrames.size() );
 
 }
 

@@ -99,6 +99,11 @@ int SignNumber( const T d ) {
 	}
 }
 
+template<class T>
+double CrossProduct( const T &p0, const T &p1, const T &p2 ) {
+	return (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+}
+
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );
 
 string Point2fToString( const Point2f & );

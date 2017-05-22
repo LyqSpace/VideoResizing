@@ -31,8 +31,8 @@ private:
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
 	void CalcBaryCooordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
-	int LocateNearestPoint( int, const Point2f &, vector<BaryCoord> & );
-	Point2f CalcPointByBaryCoord( const vector<BaryCoord> & );
+	void LocateNearestPoint( int, const Point2f &, vector<BaryCoord> &, int );
+	Point2f CalcPointByBaryCoord( const vector<BaryCoord> &, int );
 
 	Point2f GetBoundPoint( int, int );
 	void DelaunayDivide();
