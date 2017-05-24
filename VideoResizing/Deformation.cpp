@@ -594,93 +594,136 @@ void Deformation::InitDeformation( double _deformedScaleX, double _deformedScale
 
 }
 
-//double Deformation::CalcEnergy() {
-//
-//	double E, E_L, E_D, E_T;
-//
-//	E = 0;
-//
-//	// Calculate E_L energy term.
-//	E_L = 0;
-//	for ( const auto &centerPoint : controlPoints ) {
-//
-//		if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
-//
-//
-//	}
-//	for ( const auto &e : spatialEdge ) {
-//
-//		ControlPoint p0 = controlPoints[e.first];
-//		ControlPoint p1 = controlPoints[e.second];
-//
-//		double saliencyWeight = p0.saliency + p1.saliency;
-//		double distortion = NormL2( p0.pos - p1.pos, p0.originPos - p1.originPos );
-//
-//		E_L += saliencyWeight * distortion;
-//
-//	}
-//
-//	E_D = 0;
-//
-//	E = E_L + E_D;
-//
-//	return E;
-//
-//}
+double Deformation::CalcEnergy() {
 
-//void Deformation::MinimizeEnergy() {
-//
-//	printf( "Minimize resize energy.\n" );
-//
-//	double lambda = 1;
-//	double curE = CalcEnergy();
-//	printf( "\tIter 0. Energy: %.3lf. Learning rate: %.3lf.\n", curE, lambda );
-//
-//	for ( int iter = 0; iter < MIN_ENERGY_ITERS; iter++ ) {
-//
-//		vector<Point2f> newControlPoints( controlPointsNum );
-//
-//		for ( int i = 0; i < controlPointsNum; i++ ) {
-//			newControlPoints[i] = controlPoints[i].pos;
-//		}
-//
-//		for ( const auto &e : spatialEdge ) {
-//			ControlPoint p0 = controlPoints[e.first];
-//			ControlPoint p1 = controlPoints[e.second];
-//
-//			double dnmtr = NormL2( p0.pos - p1.pos, p0.originPos - p1.originPos );
-//			
-//			if ( SignNumber( dnmtr ) == 0 ) continue;
-//
-//			double saliency = p0.saliency + p1.saliency;
-//			Point2f mlclr = (p0.pos - p1.pos) - (p0.originPos - p1.originPos);
-//
-//			newControlPoints[e.first] -= lambda * saliency / dnmtr * mlclr;
-//			newControlPoints[e.second] -= -lambda * saliency / dnmtr * mlclr;
-//
-//		}
-//
-//		for ( int i = 0; i < controlPointsNum; i++ ) {
-//			if ( controlPoints[i].anchorType == ControlPoint::ANCHOR_NONE ) {
-//				controlPoints[i].pos = newControlPoints[i];
-//				RestrictInside( controlPoints[i].pos, deformedFrameSize );
-//			}
-//		}
-//
-//		double preE = curE;
-//		curE = CalcEnergy();
-//		if ( curE >= preE ) {
-//			lambda /= 2;
-//		}
-//
-//		if ( lambda < ITER_TERMINATE ) break;
-//
-//		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
-//
-//		
-//	}
-//}
-//
+	double E = 0;
+
+	// Calculate E_L energy term.
+	double E_L = 0;
+
+	for ( const auto &centerPoint : controlPoints ) {
+
+		if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
+
+		double saliencyWeight = centerPoint.saliency;
+		double sumDistortion = 0;
+
+		for ( const auto &boundIndex : centerPoint.spatialBound ) {
+
+			ControlPoint &boundPoint = controlPoints[boundIndex];
+
+			double distortion = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos );
+			sumDistortion += distortion;
+
+		}
+
+		E_L += saliencyWeight * sumDistortion;
+
+	}
+
+	// Calculate E_D energy term.
+	double E_D = 0;
+
+	for ( const auto &centerPoint : controlPoints ) {
+
+		if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
+
+		double saliencyWeight = centerPoint.saliency;
+
+		double tmpDistortion0 = 0;
+		double tmpDistortion1 = 0;
+		for ( const auto &boundIndex : centerPoint.spatialBound ) {
+
+			ControlPoint &boundPoint = controlPoints[boundIndex];
+			double distortionRate = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos ) / 
+				NormL2( centerPoint.originPos - boundPoint.originPos );
+
+			tmpDistortion0 += sqr( distortionRate );
+			tmpDistortion1 += distortionRate;
+
+		}
+
+		tmpDistortion0 = tmpDistortion0 / centerPoint.spatialBound.size();
+		tmpDistortion1 = sqr( tmpDistortion1 ) / sqr( centerPoint.spatialBound.size() );
+
+		E_D += tmpDistortion0 - tmpDistortion1;
+
+	}
+
+	// Calculate E_T energy term.
+	double E_T = 0;
+	for ( const auto &point : controlPoints ) {
+		
+		int nextFrameId = point.frameId + 1;
+
+		if ( nextFrameId == frameNum ) continue;
+
+		Point2f nextFramePointPos = CalcPointByBaryCoord( point.temporalNeighbors, DEFORMED_POS );
+		Point2f nextFramePointOriginPos = CalcPointByBaryCoord( point.temporalNeighbors, ORIGIN_POS );
+
+		E_T += NormL2( point.pos - nextFramePointPos, point.originPos - nextFramePointOriginPos );
+
+	}
+
+	E = E_L + E_D + E_T;
+
+	return E;
+
+}
+
+void Deformation::MinimizeEnergy() {
+
+	printf( "Minimize resize energy.\n" );
+
+	double lambda = 1;
+	double curE = CalcEnergy();
+	printf( "\tIter 0. Energy: %.3lf. Learning rate: %.3lf.\n", curE, lambda );
+
+	for ( int iter = 0; iter < MIN_ENERGY_ITERS; iter++ ) {
+
+		vector<Point2f> newControlPoints( controlPointsNum );
+
+		for ( int i = 0; i < controlPointsNum; i++ ) {
+			newControlPoints[i] = controlPoints[i].pos;
+		}
+
+		for ( const auto &e : spatialEdge ) {
+			ControlPoint p0 = controlPoints[e.first];
+			ControlPoint p1 = controlPoints[e.second];
+
+			double dnmtr = NormL2( p0.pos - p1.pos, p0.originPos - p1.originPos );
+			
+			if ( SignNumber( dnmtr ) == 0 ) continue;
+
+			double saliency = p0.saliency + p1.saliency;
+			Point2f mlclr = (p0.pos - p1.pos) - (p0.originPos - p1.originPos);
+
+			newControlPoints[e.first] -= lambda * saliency / dnmtr * mlclr;
+			newControlPoints[e.second] -= -lambda * saliency / dnmtr * mlclr;
+
+		}
+
+		for ( int i = 0; i < controlPointsNum; i++ ) {
+			if ( controlPoints[i].anchorType == ControlPoint::ANCHOR_NONE ) {
+				controlPoints[i].pos = newControlPoints[i];
+				RestrictInside( controlPoints[i].pos, deformedFrameSize );
+			}
+		}
+
+		double preE = curE;
+		curE = CalcEnergy();
+		if ( curE >= preE ) {
+			lambda /= 2;
+		}
+
+		if ( lambda < ITER_TERMINATE ) break;
+
+		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
+
+		
+	}
+}
+
 
 Point2f Deformation::CalcPointByBaryCoord( const vector<BaryCoord> &baryCoord, int posType ) {
 
