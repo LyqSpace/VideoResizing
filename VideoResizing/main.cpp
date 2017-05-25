@@ -79,7 +79,7 @@ int main( int argc, char *argv[] ) {
 			Deformation deformation( keyFrames );
 			deformation.BuildControlPoints();
 			deformation.InitDeformation( deformedScaleX, deformedScaleY );
-			//deformation.MinimizeEnergy();
+			deformation.MinimizeEnergy();
 			deformation.CalcDeformedMap();
 			deformation.RenderKeyFrames();
 

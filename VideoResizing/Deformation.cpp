@@ -365,23 +365,12 @@ void Deformation::DelaunayDivide() {
 
 }
 
-void Deformation::CalcBaryCooordLambda( const Point2f &p, const vector<Point2f> &vertices, vector<double> &lambda ) {
+void Deformation::CalcBaryCoordLambda( const Point2f &p, const vector<Point2f> &vertices, vector<double> &lambda ) {
 
 	if ( vertices.size() == 3 ) {
 
 		double detT = (vertices[1].y - vertices[2].y) * (vertices[0].x - vertices[2].x) +
 			(vertices[2].x - vertices[1].x) * (vertices[0].y - vertices[2].y);
-
-#ifdef DEBUG
-		/*if ( SignNumber( detT ) == 0 ) {
-			cout << "detT == 0" << endl << endl << endl << endl << endl;
-			cout << p << endl;
-			for ( const auto &vertex : vertices ) cout << vertex << " ";
-			cout << endl;
-			}*/
-		// for ( const auto &vertex : vertices ) cout << vertex << " ";
-		// cout << endl;
-#endif
 
 		lambda[0] = ((vertices[1].y - vertices[2].y) * (p.x - vertices[2].x) +
 					  (vertices[2].x - vertices[1].x) * (p.y - vertices[2].y)) / detT;
@@ -405,130 +394,143 @@ void Deformation::CalcBaryCooordLambda( const Point2f &p, const vector<Point2f> 
 			lambda[0] = (p.x * vertices[1].y - p.y * vertices[1].x) / detT;
 			lambda[1] = (p.y * vertices[0].x - p.x * vertices[0].y) / detT;
 		}
-	} else {
-		lambda[0] = 1;
 	}
 
 }
 
-void Deformation::LocateNearestPoint( int frameId, const Point2f &p, vector<BaryCoord> &baryCoord, int posType ) {
+void Deformation::CalcBaryCoord1( map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord ) {
+	int controlPointIndex = posToPointIndexMap[Point2fToString( p )];
+	baryCoord.push_back( make_pair( 1, controlPointIndex ) );
+}
 
-	const int nearestNum = 3;
-	int nearestPointNotFound = nearestNum - 1;
-	vector< pair<double, int> > nearestPoints( nearestNum, make_pair( INF, -1 ) );
-	int label = frames[frameId].pixelLabel.at<int>( p );
-	int centerPointIndex = frameControlPointIndex[frameId][label];
+void Deformation::CalcBaryCoord2( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord ) {
 
-	double dist;
-	if ( posType == ORIGIN_POS ) {
-		dist = NormL2( p, controlPoints[centerPointIndex].originPos );
+	Point2f pointOrg, pointDst;
+	vector<Point2f> biVertices;
+
+	if ( subdiv.edgeOrg( e0, &pointOrg ) > 0 && subdiv.edgeDst( e0, &pointDst ) > 0 ) {
+		biVertices.push_back( pointOrg );
+		biVertices.push_back( pointDst );
 	} else {
-		dist = NormL2( p, controlPoints[centerPointIndex].pos );
+		cout << "[CalcBaryCoord2] Get points error: pointOrg " << subdiv.edgeOrg( e0, &pointOrg ) << ", pointDst " << subdiv.edgeDst( e0, &pointDst ) << endl;
 	}
 
-	pair<double, int> nearPoint( dist, centerPointIndex );
+	vector<double> lambda( 2 );
 
-	nearestPoints[0] = nearPoint;
+	CalcBaryCoordLambda( p, biVertices, lambda );
 
-	for ( const auto &neighborIndex : controlPoints[centerPointIndex].spatialBound ) {
+	for ( int i = 0; i < 2; i++ ) {
+		int vertex = posToPointIndexMap[Point2fToString( biVertices[i] )];
+		baryCoord.push_back( make_pair( lambda[i], vertex ) );
+	}
 
-		Point2f neighborPoint;
-		if ( posType == ORIGIN_POS ) {
-			neighborPoint = controlPoints[neighborIndex].originPos;
-		} else {
-			neighborPoint = controlPoints[neighborIndex].pos;
-		}
+#ifdef DEBUG
+	//printf( "Bi vertices X: %.3lf = %.3lf * %.3lf + %.3lf * %.3lf\n", nextFramePos.x, lambda[0], biVertices[0].x, lambda[1], biVertices[1].x );
+	//printf( "Bi vertices Y: %.3lf = %.3lf * %.3lf + %.3lf * %.3lf\n", nextFramePos.y, lambda[0], biVertices[0].y, lambda[1], biVertices[1].y );
+	//double tmpX = 0, tmpY = 0;
+	//for ( int i = 0; i < 3; i++ ) {
+	//	tmpX += lambda[i] * biVertices[i].x;
+	//	tmpY += lambda[i] * biVertices[i].y;
+	//}
+	//cout << Point2f( tmpX, tmpY ) << endl;
+#endif
 
-		dist = NormL2( p, neighborPoint );
-		nearPoint = make_pair( dist, neighborIndex );
+}
 
-		for ( int j = 0; j < nearestNum; j++ ) {
+void Deformation::CalcBaryCoord3( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord ) {
 
-			if ( nearPoint.second == -1 ) break;
+	vector<Point2f> triVertices;
+	int e = e0;
 
-			if ( nearPoint.first < nearestPoints[j].first ) {
+	do {
+		Point2f pointOrg, pointDst;
+		if ( subdiv.edgeOrg( e, &pointOrg ) > 0 && subdiv.edgeDst( e, &pointDst ) > 0 ) {
 
-				if ( (nearestPointNotFound == 1 && j == 2) || nearestPointNotFound == 0 ) {
-
-					Point2f p1, p2;
-					int otherIndex1, otherIndex2;
-					switch ( j ) {
-						case 0:
-							otherIndex1 = 1;
-							otherIndex2 = 2;
-							break;
-						case 1:
-							otherIndex1 = 0;
-							otherIndex2 = 2;
-							break;
-						case 2:
-							otherIndex1 = 0;
-							otherIndex2 = 1;
-						default:
-							break;
-					}
-
-					if ( posType == ORIGIN_POS ) {
-						p1 = controlPoints[nearestPoints[otherIndex1].second].originPos;
-						p2 = controlPoints[nearestPoints[otherIndex2].second].originPos;
-					} else {
-						p1 = controlPoints[nearestPoints[otherIndex1].second].pos;
-						p2 = controlPoints[nearestPoints[otherIndex2].second].pos;
-					}
-
-					if ( SignNumber( CrossProduct( neighborPoint, p1, p2 ) ) != 0 ) {
-						swap( nearPoint, nearestPoints[j] );
-						if ( j == 2 && nearestPointNotFound == 1 ) nearestPointNotFound--;
-					}
-
-				} else {
-					swap( nearPoint, nearestPoints[j] );
-					if ( j == 1 && nearestPointNotFound == 2 ) nearestPointNotFound--;
+			bool vertexExistFlag = false;
+			for ( const auto &vertex : triVertices ) {
+				if ( vertex == pointOrg ) {
+					vertexExistFlag = true;
+					break;
 				}
+			}
+			if ( !vertexExistFlag ) {
+				triVertices.push_back( pointOrg );
+				if ( triVertices.size() >= 3 ) break;
+			}
 
+			vertexExistFlag = false;
+			for ( const auto &vertex : triVertices ) {
+				if ( vertex == pointDst ) {
+					vertexExistFlag = true;
+					break;
+				}
+			}
+			if ( !vertexExistFlag ) {
+				triVertices.push_back( pointDst );
+				if ( triVertices.size() >= 3 ) break;
 			}
 
 		}
+
+		e = subdiv.getEdge( e, Subdiv2D::NEXT_AROUND_LEFT );
+
+	} while ( e != e0 );
+
+	if ( triVertices.size() != 3 ) {
+		printf( "[CalcBaryCoord3] Triangle vertices size is inequal 3.\n" );
+		return;
 	}
 
-#ifdef DEBUG
-	/*for ( const auto &nearPoint : nearestPoints ) {
-	cout << nearPoint.first << " " << nearPoint.second << endl;
-	}*/
-#endif
+	vector<double> lambda( 3 );
 
-	nearestPoints.resize( nearestNum - nearestPointNotFound );
-
-	vector<double> lambda;
-	vector<Point2f> vertices;
-	for ( size_t i = 0; i < nearestPoints.size(); i++ ) {
+	CalcBaryCoordLambda( p, triVertices, lambda );
 
 #ifdef DEBUG
-		// cout << nearestPoints[i].first << " " << nearestPoints[i].second << endl;
+	/*cout << nextFramePos << endl;
+	printf( "%.3lf %.3lf %.3lf\n", lambda[0], lambda[1], lambda[2] );
+	cout << triVertices[0] << " " << triVertices[1] << " " << triVertices[2] << endl;
+	double tmpX = 0, tmpY = 0;
+	for ( int i = 0; i < 3; i++ ) {
+	tmpX += lambda[i] * triVertices[i].x;
+	tmpY += lambda[i] * triVertices[i].y;
+	}
+	cout << Point2f( tmpX, tmpY ) << endl;*/
 #endif
 
-		lambda.push_back( 0 );
-		if ( posType == ORIGIN_POS ) {
-			vertices.push_back( controlPoints[nearestPoints[i].second].originPos );
-		} else {
-			vertices.push_back( controlPoints[nearestPoints[i].second].pos );
-		}
+	for ( int i = 0; i < 3; i++ ) {
+		int vertex = posToPointIndexMap[Point2fToString( triVertices[i] )];
+		baryCoord.push_back( make_pair( lambda[i], vertex ) );
 	}
 
-	CalcBaryCooordLambda( p, vertices, lambda );
+}
+
+int Deformation::LocatePoint( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord ) {
+
+	int e0, vertex, locateStatus;
 
 	baryCoord.clear();
-	for ( size_t i = 0; i < nearestPoints.size(); i++ ) {
-		baryCoord.push_back( make_pair( lambda[i], nearestPoints[i].second ) );
+
+	locateStatus = subdiv.locate( p, e0, vertex );
+
+	switch ( locateStatus ) {
+		case CV_PTLOC_INSIDE:
+			CalcBaryCoord3( subdiv, posToPointIndexMap, e0, p, baryCoord );
+			break;
+		case CV_PTLOC_ON_EDGE:
+			CalcBaryCoord2( subdiv, posToPointIndexMap, e0, p, baryCoord );
+			break;
+		case CV_PTLOC_VERTEX:
+			CalcBaryCoord1( posToPointIndexMap, p, baryCoord );
+			break;
+		default:
+			break;
 	}
 
 #ifdef DEBUG
-	/*for ( size_t i = 0; i < nearestPoints.size(); i++ ) {
-		cout << vertices[i] << " " << lambda[i] << " ";
-		}
-		Point2f tmpPoint = CalcPointByBaryCoord( baryCoord, ORIGIN_POS );
-		cout << endl << p << " " << tmpPoint << endl;*/
+	// DrawLocate( p, baryCoord );
 #endif
+
+	return locateStatus;
 
 }
 
@@ -536,32 +538,52 @@ void Deformation::AddTemporalNeighbors() {
 
 	printf( "\tAdd temporal neighbors to control points.\n" );
 
-	for ( auto &controlPoint : controlPoints ) {
+	int curFramePointIndex = 0;
+	int nextFramePointIndex = 0;
+	Rect rect( 0, 0, frameSize.width, frameSize.height );
+	
 
-		int nextFrameId = controlPoint.frameId + 1;
+	for ( ; nextFramePointIndex < controlPointsNum; nextFramePointIndex++ ) {
+		if ( controlPoints[nextFramePointIndex].frameId != 0 ) break;
+	}
 
-		if ( nextFrameId == frameNum ) continue;
+	for ( int frameIndex = 0; frameIndex < frameNum - 1; frameIndex++ ) {
 
-		if ( controlPoint.anchorType == ControlPoint::ANCHOR_STATIC ) continue;
+		Subdiv2D subdiv( rect );
+		map<string, int> posToPointIndexMap;
 
-		Point2f flow = frames[controlPoint.frameId].forwardFlowMap.at<Point2f>( Point2fToPoint( controlPoint.pos ) );
-		Point2f nextFramePos = controlPoint.pos + flow;
+		for ( ; nextFramePointIndex < controlPointsNum; nextFramePointIndex++ ) {
+			
+			ControlPoint &controlPoint = controlPoints[nextFramePointIndex];
+			if ( controlPoint.frameId == frameIndex + 2 ) break;
 
-		controlPoint.flow = flow;
+			subdiv.insert( controlPoint.originPos );
+			posToPointIndexMap[ Point2fToString( controlPoint.originPos ) ] = nextFramePointIndex;
 
-#ifdef DEBUG
-		// cout << controlPoint.frameId << " " << controlPoint.pos << Point2fToPoint( controlPoint.pos ) << endl;
-		// cout << flow << endl;
-#endif
+		}
 
-		if ( CheckOutside( nextFramePos, frameSize ) ) continue;
+		for ( ; curFramePointIndex < controlPointsNum; curFramePointIndex++ ) {
+			
+			ControlPoint &controlPoint = controlPoints[curFramePointIndex];
+			if ( controlPoint.anchorType == ControlPoint::ANCHOR_STATIC ) continue;
+			if ( controlPoint.frameId != frameIndex ) break;
 
-		vector<BaryCoord> baryCoord;
-		LocateNearestPoint( nextFrameId, nextFramePos, baryCoord, ORIGIN_POS );
+			Point2f flow = frames[controlPoint.frameId].forwardFlowMap.at<Point2f>( Point2fToPoint( controlPoint.originPos ) );
+			Point2f nextFramePos = controlPoint.originPos + flow;
+			controlPoint.flow = flow;
 
-		controlPoint.AddTemporalNeighbor( baryCoord );
+			if ( CheckOutside( nextFramePos, frameSize ) ) continue;
+
+			vector<BaryCoord> baryCoord;
+			int locateStatus = LocatePoint( subdiv, posToPointIndexMap, nextFramePos, baryCoord );
+			if ( locateStatus == CV_PTLOC_INSIDE || locateStatus == CV_PTLOC_ON_EDGE || locateStatus == CV_PTLOC_VERTEX ) {
+				controlPoint.AddTemporalNeighbor( baryCoord );
+			}
+			
+		}
 
 	}
+	
 }
 
 void Deformation::BuildControlPoints() {
@@ -605,7 +627,7 @@ double Deformation::CalcEnergy() {
 
 		if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
 
-		double saliencyWeight = centerPoint.saliency;
+		double saliency = centerPoint.saliency;
 		double sumDistortion = 0;
 
 		for ( const auto &boundIndex : centerPoint.spatialBound ) {
@@ -617,7 +639,7 @@ double Deformation::CalcEnergy() {
 
 		}
 
-		E_L += saliencyWeight * sumDistortion;
+		E_L += saliency * sumDistortion;
 
 	}
 
@@ -628,14 +650,14 @@ double Deformation::CalcEnergy() {
 
 		if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
 
-		double saliencyWeight = centerPoint.saliency;
+		double saliency = centerPoint.saliency;
 
 		double tmpDistortion0 = 0;
 		double tmpDistortion1 = 0;
 		for ( const auto &boundIndex : centerPoint.spatialBound ) {
 
 			ControlPoint &boundPoint = controlPoints[boundIndex];
-			double distortionRate = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos ) / 
+			double distortionRate = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos ) /
 				NormL2( centerPoint.originPos - boundPoint.originPos );
 
 			tmpDistortion0 += sqr( distortionRate );
@@ -646,14 +668,15 @@ double Deformation::CalcEnergy() {
 		tmpDistortion0 = tmpDistortion0 / centerPoint.spatialBound.size();
 		tmpDistortion1 = sqr( tmpDistortion1 ) / sqr( centerPoint.spatialBound.size() );
 
-		E_D += tmpDistortion0 - tmpDistortion1;
+		E_D += saliency * (tmpDistortion0 - tmpDistortion1);
 
 	}
 
 	// Calculate E_T energy term.
 	double E_T = 0;
+
 	for ( const auto &point : controlPoints ) {
-		
+
 		int nextFrameId = point.frameId + 1;
 
 		if ( nextFrameId == frameNum ) continue;
@@ -687,24 +710,99 @@ void Deformation::MinimizeEnergy() {
 			newControlPoints[i] = controlPoints[i].pos;
 		}
 
-		for ( const auto &e : spatialEdge ) {
-			ControlPoint p0 = controlPoints[e.first];
-			ControlPoint p1 = controlPoints[e.second];
+		// Minimize E_L energy term.
+		for ( size_t i = 0; i < controlPoints.size(); i++ ) {
 
-			double dnmtr = NormL2( p0.pos - p1.pos, p0.originPos - p1.originPos );
-			
-			if ( SignNumber( dnmtr ) == 0 ) continue;
+			ControlPoint &centerPoint = controlPoints[i];
+			if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
 
-			double saliency = p0.saliency + p1.saliency;
-			Point2f mlclr = (p0.pos - p1.pos) - (p0.originPos - p1.originPos);
+			double saliency = centerPoint.saliency;
+			Point2f sumDelta( 0, 0 );
 
-			newControlPoints[e.first] -= lambda * saliency / dnmtr * mlclr;
-			newControlPoints[e.second] -= -lambda * saliency / dnmtr * mlclr;
+			for ( const auto &boundIndex : centerPoint.spatialBound ) {
+
+				ControlPoint &boundPoint = controlPoints[boundIndex];
+
+				Point2f mlclr = (centerPoint.pos - boundPoint.pos) - (centerPoint.originPos - boundPoint.originPos);
+				double dnmtr = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos );
+				
+				if ( SignNumber( dnmtr ) == 0 ) continue;
+
+				Point2f tmp = 1 / dnmtr * mlclr;
+
+#ifdef DEBUG_ENERGY
+				cout << "E_L " << newControlPoints[boundIndex] << " " << saliency * tmp << endl;
+#endif
+
+				newControlPoints[boundIndex] -= lambda * saliency * tmp;
+				sumDelta += tmp;
+
+			}
+
+#ifdef DEBUG_ENERGY
+			cout << "E_L " << newControlPoints[i] << " " << saliency * sumDelta << endl;
+#endif
+			newControlPoints[i] -= lambda * saliency * sumDelta;
 
 		}
 
+//		// Minimize E_D energy term.
+//		for ( size_t i = 0; i < controlPoints.size(); i++ ) {
+//
+//			ControlPoint &centerPoint = controlPoints[i];
+//			if ( centerPoint.anchorType != ControlPoint::ANCHOR_CENTER ) continue;
+//
+//			int spatialBoundSize = centerPoint.spatialBound.size();
+//			double avgDistortion = 0;
+//			Point2f avgPartialDistortion = 0;
+//
+//			for ( const auto &boundIndex : centerPoint.spatialBound ) {
+//
+//				ControlPoint &boundPoint = controlPoints[boundIndex];
+//				avgDistortion += NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos ) /
+//					NormL2( centerPoint.originPos - boundPoint.originPos );
+//				avgPartialDistortion += 1 / (NormL2( centerPoint.originPos - boundPoint.originPos ) * NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos )) *
+//					((centerPoint.pos - boundPoint.pos) - (centerPoint.originPos - boundPoint.originPos));
+//
+//			}
+//
+//			avgDistortion = 1.0 / spatialBoundSize * avgDistortion;
+//			avgPartialDistortion = 1.0 / spatialBoundSize * avgPartialDistortion;
+//
+//			double saliency = centerPoint.saliency;
+//			Point2f PiDelta = 0;
+//
+//			for ( const auto &boundIndex : centerPoint.spatialBound ) {
+//
+//				ControlPoint &boundPoint = controlPoints[boundIndex];
+//
+//				double distortion = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos ) /
+//					NormL2( centerPoint.originPos - boundPoint.originPos );
+//				Point2f partialDistortion = 1 / (NormL2( centerPoint.originPos - boundPoint.originPos ) * NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos )) *
+//					((centerPoint.pos - boundPoint.pos) - (centerPoint.originPos - boundPoint.originPos));
+//
+//				PiDelta += 2 * distortion * partialDistortion - 2 * distortion * avgPartialDistortion;
+//
+//				Point2f PjDelta = saliency * spatialBoundSize * (2 * distortion * partialDistortion - 2 * partialDistortion * avgDistortion);
+//
+//#ifdef DEBUG_ENERGY
+//				cout << "E_D " << newControlPoints[boundIndex] << " " << PjDelta << endl;
+//#endif
+//				newControlPoints[boundIndex] -= lambda * PjDelta;
+//
+//			}
+//
+//			PiDelta = saliency * spatialBoundSize * PiDelta;
+//
+//#ifdef DEBUG_ENERGY
+//			cout << "E_D " << newControlPoints[i] << " " << PiDelta << endl;
+//#endif
+//			newControlPoints[i] -= lambda * PiDelta;
+//
+//		}
+
 		for ( int i = 0; i < controlPointsNum; i++ ) {
-			if ( controlPoints[i].anchorType == ControlPoint::ANCHOR_NONE ) {
+			if ( controlPoints[i].anchorType != ControlPoint::ANCHOR_STATIC ) {
 				controlPoints[i].pos = newControlPoints[i];
 				RestrictInside( controlPoints[i].pos, deformedFrameSize );
 			}
@@ -720,7 +818,7 @@ void Deformation::MinimizeEnergy() {
 
 		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
 
-		
+
 	}
 }
 
@@ -750,28 +848,61 @@ Point2f Deformation::CalcPointByBaryCoord( const vector<BaryCoord> &baryCoord, i
 
 void Deformation::CalcDeformedMap() {
 
+//#define DEBUG_CALC_DEFORMED_MAP
+
 	clock_t timeSt = clock();
 
 	deformedMap.clear();
+	
+	int controlPointIndex = 0;
+	Rect rect( 0, 0, deformedFrameSize.width, deformedFrameSize.height );
 
-	for ( int i = 0; i < frameNum; i++ ) {
+	for ( int frameIndex = 0; frameIndex < frameNum; frameIndex++ ) {
 
 		deformedMap.push_back( Mat( deformedFrameSize, CV_32FC2 ) );
 
-		printf( "Calculate key frames deformed map. Progress rate %d/%d.\r", i + 1, frameNum );
+		printf( "Calculate key frames deformed map. Progress rate %d/%d.\r", frameIndex + 1, frameNum );
+
+		Subdiv2D subdiv( rect );
+		map<string, int> posToPointIndexMap;
+
+		for ( ; controlPointIndex < controlPointsNum; controlPointIndex++ ) {
+			
+			ControlPoint &controlPoint = controlPoints[controlPointIndex];
+
+			if ( controlPoint.frameId != frameIndex ) break;
+
+			subdiv.insert( controlPoint.pos );
+			posToPointIndexMap[Point2fToString( controlPoint.pos )] = controlPointIndex;
+
+		}
 
 		for ( int y = 0; y < deformedFrameSize.height; y++ ) {
 			for ( int x = 0; x < deformedFrameSize.width; x++ ) {
 
 				vector<BaryCoord> baryCoord;
 				Point2f originPoint, deformedPoint;
-				int locateStatus;
-
+				
 				deformedPoint = Point2f( x, y );
-				LocateNearestPoint( i, deformedPoint, baryCoord, DEFORMED_POS );
-				originPoint = CalcPointByBaryCoord( baryCoord, ORIGIN_POS );
-				RestrictInside( originPoint, frameSize );
-				deformedMap[i].at<Point2f>( deformedPoint ) = originPoint;
+				int locateStatus = LocatePoint( subdiv, posToPointIndexMap, deformedPoint, baryCoord );
+				if ( locateStatus == CV_PTLOC_INSIDE || locateStatus == CV_PTLOC_ON_EDGE || locateStatus == CV_PTLOC_VERTEX ) {
+					originPoint = CalcPointByBaryCoord( baryCoord, ORIGIN_POS );
+					RestrictInside( originPoint, frameSize );
+					deformedMap[frameIndex].at<Point2f>( deformedPoint ) = originPoint;
+				} else {
+					printf( "[CalcDeformedMap] Locate error. " );
+					cout << deformedPoint << endl;
+				}
+				
+#ifdef DEBUG_CALC_DEFORMED_MAP
+				if ( frameIndex == 0 && y == 80 && x <= 30 ) {
+					for ( size_t i = 0; i < baryCoord.size(); i++ ) {
+						cout << baryCoord[i].first << " " << controlPoints[baryCoord[i].second].pos << " " << controlPoints[baryCoord[i].second].originPos << endl;
+					}
+					cout << x << " " << originPoint << " " << deformedPoint << endl << endl;
+				}
+
+#endif		
 
 #ifdef DEBUG
 				// DrawLocate( deformedPoint, baryCoord );

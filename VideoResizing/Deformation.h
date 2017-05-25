@@ -30,8 +30,11 @@ private:
 	void DrawEdge( int, int );
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
-	void CalcBaryCooordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
-	void LocateNearestPoint( int, const Point2f &, vector<BaryCoord> &, int );
+	void CalcBaryCoordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
+	void CalcBaryCoord1( map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord );
+	void CalcBaryCoord2( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
+	void CalcBaryCoord3( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
+	int LocatePoint( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord );
 	Point2f CalcPointByBaryCoord( const vector<BaryCoord> &, int );
 
 	Point2f GetBoundPoint( int, int );

@@ -69,7 +69,7 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 		keyFrames.push_back( keyFrame );
 
 #ifdef DEBUG
-		if ( keyFrames.size() > 1 ) break;
+		if ( keyFrames.size() > 2 ) break;
 #endif
 	}
 
