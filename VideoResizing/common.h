@@ -26,6 +26,7 @@ const Point directions[DIRECTIONS_NUM] = {
 #define sqr(_x) ((_x) * (_x))
 
 const int QUANTIZE_LEVEL = 5;
+const int MAX_SUPERPIXEL_NUM = 10;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;

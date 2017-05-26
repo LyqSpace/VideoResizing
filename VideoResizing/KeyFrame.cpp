@@ -14,7 +14,7 @@ KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 	img.convertTo( CIELabImg, CV_32FC3, 1.0 / 255 );
 	cvtColor( CIELabImg, CIELabImg, COLOR_BGR2Lab );
 
-	superpixelNum = 100;
+	superpixelNum = MAX_SUPERPIXEL_NUM;
 	opFlag = false;
 	edFlag = false;
 
@@ -22,7 +22,6 @@ KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 
 void KeyFrame::FreeMemory() {
 
-	imgWithContours.release();
 	spatialContrastMap.release();
 	temporalContrastMap.release();
 	paletteMap.release();
@@ -36,6 +35,11 @@ void KeyFrame::FreeMemory() {
 	forwardLocalMotionMap.release();
 	backwardLocalMotionMap.release();
 
+}
+
+void KeyFrame::DrawImgWithContours() {
+	imshow( "Image With Contours", imgWithContours );
+	waitKey( 1 );
 }
 
 double KeyFrame::CalcColorHistDiff( int spId0, int spId1 ) {
@@ -114,24 +118,31 @@ void KeyFrame::SegSuperpixel() {
 	int *label;
 	
 	slic.GenerateSuperpixels(img, superpixelNum );
+	imgWithContours = slic.GetImgWithContours( Scalar( 255, 255, 255 ) );
 	
-	superpixelCard = vector<int>( superpixelNum, 0 );
-	superpixelCenter = vector<Point>( superpixelNum, Point( 0, 0 ) );
 	label = slic.GetLabel();
 	superpixelNum = 0;
 	for ( int y = 0; y < rows; y++ ) {
 		for ( int x = 0; x < cols; x++ ) {
 			int pointIndex = y * cols + x;
 			int labelIndex = label[pointIndex];
-			pixelLabel.at<int>( Point( x, y ) ) = labelIndex;
-			superpixelCard[labelIndex]++;
-			superpixelCenter[labelIndex] += Point( x, y );
+			pixelLabel.at<int>( y, x ) = labelIndex;
 			superpixelNum = max( superpixelNum, labelIndex );
 		}
 	}
 
 	superpixelNum++;
+	superpixelCard = vector<int>( superpixelNum, 0 );
+	superpixelCenter = vector<Point>( superpixelNum, Point( 0, 0 ) );
 
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			int labelIndex = pixelLabel.at<int>( y, x );
+			superpixelCard[labelIndex]++;
+			superpixelCenter[labelIndex] += Point( x, y );
+		}
+	}
+	
 	for ( int i = 0; i < superpixelNum; i++ ) {
 		superpixelCenter[i].x /= superpixelCard[i];
 		superpixelCenter[i].y /= superpixelCard[i];

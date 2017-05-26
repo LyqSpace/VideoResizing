@@ -47,6 +47,7 @@ public:
 	vector<Point> superpixelCenter;
 
 	KeyFrame( const Mat &, int );
+	void DrawImgWithContours();
 	void SegSuperpixel();
 	void MarkBoundLabel();
 	void QuantizeColorSpace( const vector<Vec3f> &, const Mat & );
