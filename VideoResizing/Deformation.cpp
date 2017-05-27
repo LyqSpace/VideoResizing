@@ -290,6 +290,9 @@ void Deformation::DelaunayDivide() {
 			controlPoints[index0].AddSpatialBound( controlPointsNum );
 			controlPoints[index1].AddSpatialBound( controlPointsNum );
 
+			controlPoints[controlPointsNum].AddSpatialBound( index0 );
+			controlPoints[controlPointsNum].AddSpatialBound( index1 );
+
 			controlPointsNum++;
 
 		}
@@ -629,6 +632,8 @@ void Deformation::InitDeformation( double _deformedScaleX, double _deformedScale
 
 double Deformation::CalcEnergy() {
 
+#define DEBUG_CALC_ENERGY
+
 	double E = 0;
 
 	// Calculate E_L energy term.
@@ -647,6 +652,11 @@ double Deformation::CalcEnergy() {
 
 			double distortion = NormL2( centerPoint.pos - boundPoint.pos, centerPoint.originPos - boundPoint.originPos );
 			sumDistortion += distortion;
+
+#ifdef DEBUG_CALC_ENERGY
+			//if (centerPoint.frameId == 0 )
+			//cout << centerPoint.pos << " " << boundPoint.pos << " " << centerPoint.originPos - boundPoint.originPos << " " << saliency * distortion << endl;
+#endif
 
 		}
 
@@ -683,10 +693,24 @@ double Deformation::CalcEnergy() {
 
 	}
 
+	// Calculate E_C energy term.
+	double E_C = 0;
+
+	for ( const auto &boundPoint : controlPoints ) {
+
+		if ( boundPoint.anchorType != ControlPoint::ANCHOR_BOUND ) continue;
+
+		ControlPoint &p1 = controlPoints[boundPoint.spatialBound[0]];
+		ControlPoint &p2 = controlPoints[boundPoint.spatialBound[1]];
+		E_C += abs( CrossProduct( boundPoint.pos, p1.pos, p2.pos ) );
+
+	}
+
+
 	// Calculate E_T energy term.
 	double E_T = 0;
 
-	for ( const auto &point : controlPoints ) {
+	/*for ( const auto &point : controlPoints ) {
 
 		int nextFrameId = point.frameId + 1;
 
@@ -697,9 +721,9 @@ double Deformation::CalcEnergy() {
 
 		E_T += NormL2( point.pos - nextFramePointPos, point.originPos - nextFramePointOriginPos );
 
-	}
+	}*/
 
-	E = E_L + E_D + E_T;
+	E = alpha_D * E_L + alpha_D * E_D + alpha_C * E_C + alpha_T * E_T;
 
 	return E;
 
@@ -744,10 +768,11 @@ void Deformation::MinimizeEnergy() {
 				Point2f tmp = 1 / dnmtr * mlclr;
 
 #ifdef DEBUG_ENERGY
+				//cout << "E_L Diff " << centerPoint.pos - boundPoint.pos << " " << centerPoint.originPos - boundPoint.originPos << endl;
 				//cout << "E_L " << newControlPoints[boundIndex] << " " << saliency * tmp << endl;
 #endif
 
-				newControlPoints[boundIndex] -= lambda * saliency * tmp;
+				newControlPoints[boundIndex] -= -lambda * alpha_L * saliency * tmp;
 				sumDelta += tmp;
 
 			}
@@ -755,9 +780,11 @@ void Deformation::MinimizeEnergy() {
 #ifdef DEBUG_ENERGY
 			//cout << "E_L " << newControlPoints[i] << " " << saliency * sumDelta << endl;
 #endif
-			newControlPoints[i] -= lambda * saliency * sumDelta;
+			newControlPoints[i] -= lambda * alpha_L * saliency * sumDelta;
 
 		}
+		
+		// system( "pause" );
 
 		// Minimize E_D energy term.
 		for ( size_t i = 0; i < controlPoints.size(); i++ ) {
@@ -788,7 +815,7 @@ void Deformation::MinimizeEnergy() {
 			avgPartialDistortion = 1.0 / spatialBoundSize * avgPartialDistortion;
 
 #ifdef DEBUG_ENERGY
-			cout << "E_D " << avgDistortion << " " << avgPartialDistortion << endl;
+			//cout << "E_D " << avgDistortion << " " << avgPartialDistortion << endl;
 #endif
 
 			double saliency = centerPoint.saliency;
@@ -818,7 +845,7 @@ void Deformation::MinimizeEnergy() {
 #ifdef DEBUG_ENERGY
 				//cout << "E_D " << newControlPoints[boundIndex] << " " << PjDelta << endl;
 #endif
-				newControlPoints[boundIndex] -= lambda * PjDelta;
+				newControlPoints[boundIndex] -= lambda * alpha_D * PjDelta;
 
 			}
 
@@ -827,15 +854,60 @@ void Deformation::MinimizeEnergy() {
 #ifdef DEBUG_ENERGY
 			//cout << "E_D " << newControlPoints[i] << " " << PiDelta << endl;
 #endif
-			newControlPoints[i] -= lambda * PiDelta;
+			newControlPoints[i] -= lambda * alpha_D * PiDelta;
 
 		}
 
+		// Minimize E_C energy term.
+		for ( size_t i = 0; i < controlPoints.size(); i++ ) {
+
+			ControlPoint &p0 = controlPoints[i];
+			if ( p0.anchorType != ControlPoint::ANCHOR_BOUND ) continue;
+
+			ControlPoint &p1 = controlPoints[p0.spatialBound[0]];
+			ControlPoint &p2 = controlPoints[p0.spatialBound[1]];
+			
+			Point2f delta;
+			double crossProductResult = CrossProduct( p0.pos, p1.pos, p2.pos );
+
+			cout << "CrossProduct " << p0.pos << " " << p1.pos << " " << p2.pos << " " << crossProductResult << endl;
+			if ( SignNumber( crossProductResult ) == 0 )continue;
+
+			delta = crossProductResult / abs( crossProductResult ) * Point2f( p1.pos.y - p2.pos.y, p2.pos.x - p1.pos.x );
+			newControlPoints[i] -= lambda * alpha_C * delta;
+			cout << delta << " " << alpha_C << newControlPoints[i] << endl;
+
+			delta = crossProductResult / abs( crossProductResult ) * Point2f( p2.pos.y - p0.pos.y, p0.pos.x - p2.pos.x );
+			newControlPoints[p0.spatialBound[0]] -= lambda * alpha_C * delta;
+			cout << delta << " " << alpha_C << newControlPoints[p0.spatialBound[0]] << endl;
+
+			delta = crossProductResult / abs( crossProductResult ) * Point2f( p0.pos.y - p1.pos.y, p1.pos.x - p0.pos.x );
+			newControlPoints[p0.spatialBound[1]] -= lambda * alpha_C * delta;
+			cout << delta << " " << alpha_C << newControlPoints[p0.spatialBound[1]] << endl;
+
+		}
+
+		// Minimize E_T energy term.
+
+		/*for ( size_t i = 0; i < controlPoints.size(); i++ ) {
+
+			ControlPoint &point = controlPoints[i];
+
+			int nextFrameId = point.frameId + 1;
+
+			if ( nextFrameId == frameNum ) continue;
+
+			Point2f nextFramePointPos = CalcPointByBaryCoord( point.temporalNeighbors, DEFORMED_POS );
+			Point2f nextFramePointOriginPos = CalcPointByBaryCoord( point.temporalNeighbors, ORIGIN_POS );
+
+
+		}*/
 
 		// Update control points.
 		for ( int i = 0; i < controlPointsNum; i++ ) {
 			if ( controlPoints[i].anchorType != ControlPoint::ANCHOR_STATIC ) {
 #ifdef DEBUG_ENERGY
+				if ( controlPoints[i].frameId == 0 )
 				cout << controlPoints[i].pos << " " << newControlPoints[i] << endl;
 #endif
 				controlPoints[i].pos = newControlPoints[i];
@@ -845,14 +917,14 @@ void Deformation::MinimizeEnergy() {
 
 		double preE = curE;
 		curE = CalcEnergy();
+
+		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
+
 		if ( curE >= preE ) {
 			lambda /= 2;
 		}
 
 		if ( lambda < ITER_TERMINATE ) break;
-
-		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
-
 
 	}
 }
