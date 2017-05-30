@@ -15,6 +15,7 @@ using namespace cv;
 const double INF = 1e10;
 const double eps = 1e-8;
 const double resize_rate = 0.6;
+const double VERY_SMALL = 1e-2;
 const int DIRECTIONS_NUM = 8;
 const double ITER_TERMINATE = 0.01;
 const int MIN_ENERGY_ITERS = 200;
@@ -32,8 +33,8 @@ const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;
 
 const double alpha_L = 1;
-const double alpha_D = 1;
-const double alpha_C = 10;
+const double alpha_D = 200;
+const double alpha_C = 200;
 const double alpha_T = 1;
 
 
@@ -54,6 +55,7 @@ void NormalizeVec( vector<T> &vec ) {
 		eleMin = min( eleMin, ele );
 		eleMax = max( eleMax, ele );
 	}
+	eleMin -= VERY_SMALL;
 	T eleSpan = eleMax - eleMin;
 	for ( auto &ele : vec ) {
 		ele = (ele - eleMin) / eleSpan;
@@ -113,6 +115,16 @@ double CrossProduct( const T &p1, const T &p2 ) {
 template<class T>
 double CrossProduct( const T &p0, const T &p1, const T &p2 ) {
 	return CrossProduct( p1 - p0, p2 - p0 );
+}
+
+template<class T>
+double DotProduct( const T &p1, const T &p2 ) {
+	return p1.x * p2.x + p1.y * p2.y;
+}
+
+template<class T>
+double DotProduct( const T &p0, const T &p1, const T &p2 ) {
+	DotProduct( p1 - p0, p2 - p0 );
 }
 
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );

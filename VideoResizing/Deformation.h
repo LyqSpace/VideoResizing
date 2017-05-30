@@ -41,6 +41,16 @@ private:
 	void DelaunayDivide();
 	void AddTemporalNeighbors();
 
+	double CalcEnergyEL();
+	double CalcEnergyED();
+	double CalcEnergyEC();
+	double CalcEnergyET();
+
+	void MinEnergyEL( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyED( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyEC( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyET( vector<Point2f> &newControlPoints, double lambda );
+
 public:
 
 	enum {
