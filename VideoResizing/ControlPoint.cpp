@@ -3,7 +3,8 @@
 
 ControlPoint::ControlPoint() {
 	frameId = -1;
-	spatialBound.clear();
+	shapeNeighbors.clear();
+	structureNeighbors.clear();
 	temporalNeighbors.clear();
 }
 
@@ -16,13 +17,18 @@ ControlPoint::ControlPoint( int _frameId, const Point2f &_pos, int _anchorType, 
 	superpixelIndex = _superpixelIndex;
 	saliency = _saliency;
 
-	spatialBound.clear();
+	shapeNeighbors.clear();
+	structureNeighbors.clear();
 	temporalNeighbors.clear();
 
 }
 
-void ControlPoint::AddSpatialBound( int neighborIndex ) {
-	spatialBound.push_back( neighborIndex );
+void ControlPoint::AddShapeNeighbor( int neighborIndex ) {
+	shapeNeighbors.push_back( neighborIndex );
+}
+
+void ControlPoint::AddStructureNeighbor( int neighborIndex ) {
+	structureNeighbors.push_back( neighborIndex );
 }
 
 void ControlPoint::AddTemporalNeighbor( const vector<BaryCoord> &baryCoordinate ) {
@@ -30,7 +36,7 @@ void ControlPoint::AddTemporalNeighbor( const vector<BaryCoord> &baryCoordinate 
 }
 
 void ControlPoint::PrintSpatialBound() {
-	for ( const auto &index : spatialBound ) printf( "%d ", index );
+	for ( const auto &index : shapeNeighbors ) printf( "%d ", index );
 	printf( "\n" );
 }
 

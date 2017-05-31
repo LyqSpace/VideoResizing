@@ -17,25 +17,30 @@ const double eps = 1e-8;
 const double resize_rate = 0.6;
 const double VERY_SMALL = 1e-2;
 const int DIRECTIONS_NUM = 8;
-const double ITER_TERMINATE = 0.01;
+const double ITER_TERMINATE = 0.05;
 const int MIN_ENERGY_ITERS = 200;
 const Point directions[DIRECTIONS_NUM] = {
 	Point( 0, 1 ), Point( 1, 0 ), Point( -1, 0 ), Point( 0, -1 ), 
 	Point( 1, 1 ), Point( 1, -1 ), Point( -1, 1 ), Point( -1, -1 ) 
 };
+const string TEST_PATH = "./test/";
+const string INPUT_PATH = "./input/";
 
 #define sqr(_x) ((_x) * (_x))
 
+const int THRES_SHOTCUT = 10;
+const int THRES_KEYFRAME = 1;
 const int QUANTIZE_LEVEL = 5;
-const int MAX_SUPERPIXEL_NUM = 5;
+const int MAX_SUPERPIXEL_NUM = 100;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;
 
-const double alpha_L = 1;
-const double alpha_D = 200;
-const double alpha_C = 200;
-const double alpha_T = 1;
+const double ALPHA_STRUCTURE_L = 1;
+const double ALPHA_STRUCTURE_D = 100;
+const double ALPHA_SHAPE_L = 1;
+const double ALPHA_SHAPE_D = 100;
+const double ALPHA_TEMPORAL = 1;
 
 
 template<class T, size_t N>

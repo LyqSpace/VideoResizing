@@ -20,6 +20,7 @@ private:
 	int controlPointsNum;
 	vector<ControlPoint> controlPoints;
 	vector< vector<int> > frameControlPointIndex;
+	vector< pair<int, int> > structureEdges;
 
 	double deformedScaleX, deformedScaleY;
 	Size deformedFrameSize;
@@ -41,15 +42,19 @@ private:
 	void DelaunayDivide();
 	void AddTemporalNeighbors();
 
-	double CalcEnergyEL();
-	double CalcEnergyED();
-	double CalcEnergyEC();
-	double CalcEnergyET();
+	double CalcEnergyStructureL();
+	double CalcEnergyStructureD();
+	double CalcEnergyShapeL();
+	double CalcEnergyShapeD();
+	double CalcEnergyTemporal();
 
-	void MinEnergyEL( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyED( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyEC( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyET( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyStructureL( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyStructureD( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyShapeL( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyShapeD( vector<Point2f> &newControlPoints, double lambda );
+	void MinEnergyTemporal( vector<Point2f> &newControlPoints, double lambda );
+
+	void CollinearConstraint( vector<Point2f> &newControlPoints );
 
 public:
 

@@ -149,7 +149,7 @@ void KeyFrame::SegSuperpixel() {
 	}
 	
 #ifdef DEBUG
-	cout << "\tSuperpixel Num: " << superpixelNum << endl;
+	//cout << "\tSuperpixel Num: " << superpixelNum << endl;
 	/*imgWithContours = slic.GetImgWithContours( cv::Scalar( 0, 0, 255 ) );
 	imshow( "Img with Contours", imgWithContours );
 	waitKey( 1 );*/

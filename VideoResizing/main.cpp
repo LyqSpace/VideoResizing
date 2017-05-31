@@ -44,7 +44,7 @@ int main( int argc, char *argv[] ) {
 	*/
 	if ( runType == "all" || runType == "import" ) {
 		ConvertVideoToFrames( videoName );
-		SegFramesToShotCutKeyFrames();
+		SegFramesToShotCutKeyFrames( videoName );
 	}
 
 	/*
@@ -62,13 +62,13 @@ int main( int argc, char *argv[] ) {
 	if ( runType == "all" || runType == "resize" ) {
 		
 		vector<int> shotArr, keyArr;
-		ReadShotCut( shotArr );
-		ReadKeyArr( keyArr );
+		ReadShotCut( shotArr, videoName );
+		ReadKeyArr( keyArr, videoName );
 
 		for ( size_t i = 1; i < shotArr.size(); i++ ) {
 
 			vector<KeyFrame> keyFrames;
-			ReadKeyFrames( shotArr[i - 1], shotArr[i], keyArr, keyFrames );
+			ReadKeyFrames( shotArr[i - 1], shotArr[i], keyArr, keyFrames, videoName );
 
 			QuantizeFrames( keyFrames );
 			CalcSuperpixel( keyFrames );
@@ -84,7 +84,7 @@ int main( int argc, char *argv[] ) {
 			deformation.RenderKeyFrames();
 
 			vector<Mat> frames;
-			ReadFrames( shotArr[i - 1], shotArr[i], frames );
+			ReadFrames( shotArr[i - 1], shotArr[i], frames, videoName );
 
 			cout << endl;
 

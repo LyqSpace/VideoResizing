@@ -2,9 +2,10 @@
 #define PRETREAT_H
 
 #include "common.h"
+#include "io.h"
 #include "KeyFrame.h"
 
-void SegFramesToShotCutKeyFrames();
+void SegFramesToShotCutKeyFrames( const string &videoName );
 
 void CalcSuperpixel( vector<KeyFrame> & );
 

@@ -1,24 +1,25 @@
 #include "pretreat.h"
 
-void SegFramesToShotCutKeyFrames() {
+void SegFramesToShotCutKeyFrames( const string &videoName ) {
 
 	const int winSize = 7;
-	const double shotThres = 10;
-	const double keyThres = 2;
+	const double shotThres = THRES_SHOTCUT;
+	const double keyThres = THRES_KEYFRAME;
 
 	Mat inputFrame, oldFrame, diffFrame;
 	int frameCount = 0;
 	string frameName;
 	vector<double> diffArr;
 	vector<int> shotArr, keyArr;
+	string framesFolderPath = GetFramesFolderPath( videoName );
 
 	while ( true ) {
 
-		frameName = "frames/" + to_string( frameCount ) + ".png";
+		frameName = framesFolderPath + to_string( frameCount ) + ".png";
 		inputFrame = imread( frameName );
 		if ( inputFrame.empty() ) break;
 
-		printf( "Segment shotcuts and detect key frames. Scan frame %d.\r", frameCount );
+		printf( "Segment shotcuts and detect key frames. Scan frame %d.\r", frameCount + 1 );
 
 		if ( frameCount > 0 ) {
 			absdiff( inputFrame, oldFrame, diffFrame );
@@ -68,14 +69,17 @@ void SegFramesToShotCutKeyFrames() {
 	shotArr.push_back( frameCount );
 	keyArr.push_back( frameCount );
 
-	FILE *file = fopen( "frames/ShotCut.txt", "w" );
+	string filePath = GetRootFolderPath(videoName) + "ShotCut.txt";
+	FILE *file = fopen( filePath.c_str(), "w" );
+
 	fprintf( file, "%d\n", shotArr.size() );
 	for ( auto item : shotArr ) {
 		fprintf( file, "%d\n", item );
 	}
 	fclose( file );
 
-	file = fopen( "frames/KeyFrames.txt", "w" );
+	filePath = GetRootFolderPath( videoName ) + "KeyFrames.txt";
+	file = fopen( filePath.c_str(), "w" );
 	fprintf( file, "%d\n", keyArr.size() );
 	for ( auto item : keyArr ) {
 		fprintf( file, "%d\n", item );
