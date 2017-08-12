@@ -72,11 +72,12 @@ int main( int argc, char *argv[] ) {
 
 			QuantizeFrames( keyFrames );
 			CalcSuperpixel( keyFrames );
+			SegEdges( keyFrames );
 
 			CalcSaliencyMap( keyFrames );
 			SmoothSaliencyMap( keyFrames );
 
-			Deformation deformation( keyFrames );
+			Deformation deformation( keyFrames, videoName );
 			deformation.BuildControlPoints();
 			deformation.InitDeformation( deformedScaleX, deformedScaleY );
 			deformation.MinimizeEnergy();
@@ -85,6 +86,8 @@ int main( int argc, char *argv[] ) {
 
 			vector<Mat> frames;
 			ReadFrames( shotArr[i - 1], shotArr[i], frames, videoName );
+			deformation.RenderFrames( frames, shotArr[i - 1], shotArr[i] );
+
 
 			cout << endl;
 
@@ -92,7 +95,10 @@ int main( int argc, char *argv[] ) {
 
 	}
 
-	if ( runType == "all" || runType == "resize" || runType == "render" ) {
+	if ( runType == "all" || runType == "export" ) {
+
+		WriteResizedVideo( videoName );
+		WriteMixedVideo( videoName, deformedScaleX, deformedScaleY );
 
 	}
 

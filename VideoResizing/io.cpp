@@ -22,6 +22,28 @@ string GetResultsFolderPath( const string &videoName ) {
 
 }
 
+string GetKeyFramesFolderPath( const string &videoName ) {
+
+	string rootPath = GetRootFolderPath( videoName );
+	return rootPath + "keyframes/";
+
+}
+
+string GetOutputVideoPath( const string &videoName, int type ) {
+
+	int splitPos = videoName.find( '.' );
+	string name = videoName.substr( 0, splitPos );
+	
+	string path;
+	if ( type == RESIZED_VIDEO ) {
+		path = TEST_PATH + name + "/" + name + "_resize.avi";
+	} else if ( type == MIXED_VIDEO ) {
+		path = TEST_PATH + name + "/" + name + "_mixed.avi";
+	}
+	return path;
+
+}
+
 void ConvertVideoToFrames( const string &videoName ) {
 	
 	mkdir( TEST_PATH.c_str() );
@@ -31,6 +53,8 @@ void ConvertVideoToFrames( const string &videoName ) {
 	path = GetFramesFolderPath( videoName );
 	mkdir( path.c_str() );
 	path = GetResultsFolderPath( videoName );
+	mkdir( path.c_str() );
+	path = GetKeyFramesFolderPath( videoName );
 	mkdir( path.c_str() );
 
 	string fileName = INPUT_PATH + videoName;
@@ -108,7 +132,7 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 		keyFrames.push_back( keyFrame );
 
 #ifdef DEBUG
-		if ( keyFrames.size() > 5 ) break;
+		if ( keyFrames.size() > 2 ) break;
 #endif
 	}
 
@@ -138,5 +162,112 @@ void ReadFrames( int shotSt, int shotEd, vector<Mat> &frames, const string &vide
 	}
 
 	printf( "\n" );
+
+}
+
+void WriteKeyFrameEdgeImg( int frameId, const Mat &edgeImg, const string &videoName ) {
+
+	string keyFramesFolderPath = GetKeyFramesFolderPath( videoName );
+	string frameName( keyFramesFolderPath + to_string( frameId ) + ".png" );
+	imwrite( frameName, edgeImg );
+
+}
+
+void WriteDeformedImg( int frameId, const Mat &img, const string &videoName ) {
+
+	string resultsFolderPath = GetResultsFolderPath( videoName );
+	string frameName( resultsFolderPath + to_string( frameId ) + ".png" );
+	imwrite( frameName, img );
+
+}
+
+void WriteResizedVideo( const string &videoName ) {
+	
+	printf( "Write output video.\n" );
+
+	string videoPath = GetOutputVideoPath( videoName, RESIZED_VIDEO );
+	string resultsFolderPath = GetResultsFolderPath( videoName );
+	
+	string frameName( resultsFolderPath + to_string( 0 ) + ".png" );
+	Mat img = imread( frameName );
+
+	VideoWriter video;
+	video.open( videoPath, CV_FOURCC( 'M', 'J', 'P', 'G' ), 15, img.size() );
+	video << img;
+
+	int frameIndex = 1;
+	while ( true ) {
+		frameName = resultsFolderPath + to_string( frameIndex ) + ".png" ;
+		img = imread( frameName );
+		if ( img.empty() ) break;
+		video << img;
+		frameIndex++;
+	}
+
+}
+
+void WriteMixedVideo( const string &videoName, double deformedScaleX, double deformedScaleY ) {
+
+	printf( "Write mixed input & output video.\n" );
+
+	const int gap = 10;
+
+	string videoPath = GetOutputVideoPath( videoName, MIXED_VIDEO );
+	string resultsFolderPath = GetResultsFolderPath( videoName );
+	string framesFolderPath = GetFramesFolderPath( videoName );
+
+	string frameName = framesFolderPath + to_string( 0 ) + ".png";
+	Mat inputImg = imread( frameName );
+	frameName = resultsFolderPath + to_string( 0 ) + ".png" ;
+	Mat deformedImg = imread( frameName );
+	Mat uniformedImg;
+	resize( inputImg, uniformedImg, Size(), deformedScaleX, deformedScaleY );
+
+	Size size = Size(inputImg.cols + deformedImg.cols + deformedImg.cols + gap * 2, inputImg.rows);
+	Rect rect0( 0, 0, inputImg.cols, inputImg.rows );
+	Rect rect1( inputImg.cols + gap, 0, deformedImg.cols, deformedImg.rows );
+	Rect rect2( inputImg.cols + deformedImg.cols + 2 * gap, 0, deformedImg.cols, deformedImg.rows );
+	Mat mixedImg( size, CV_8UC3, Scalar( 255, 255, 255 ) );
+
+	inputImg.copyTo( mixedImg( rect0 ) );
+	uniformedImg.copyTo(mixedImg(rect1));
+	deformedImg.copyTo( mixedImg( rect2 ) );
+
+#ifdef DEBUG_WRITE_MIXED_VIDEO
+	imshow( "mixed", mixedImg );
+	imshow( "input", inputImg );
+	imshow( "deformed", deformedImg );
+	waitKey();
+#endif
+
+	VideoWriter video;
+	video.open( videoPath, CV_FOURCC( 'M', 'J', 'P', 'G' ), 15, size );
+	video << mixedImg;
+
+	int frameIndex = 1;
+	while ( true ) {
+		frameName = framesFolderPath + to_string( frameIndex ) + ".png";
+		inputImg = imread( frameName );
+		frameName = resultsFolderPath + to_string( frameIndex ) + ".png";
+		deformedImg = imread( frameName );
+
+		if ( inputImg.empty() ) break;
+		if ( deformedImg.empty() ) break;
+		
+		resize( inputImg, uniformedImg, Size(), deformedScaleX, deformedScaleY );
+
+		inputImg.copyTo( mixedImg( rect0 ) );
+		uniformedImg.copyTo(mixedImg(rect1));
+		deformedImg.copyTo( mixedImg( rect2 ) );
+
+#ifdef DEBUG_WRITE_MIXED_VIDEO
+		imshow( "input", inputImg );
+		imshow( "deformed", deformedImg );
+		waitKey();
+#endif
+
+		video << mixedImg;
+		frameIndex++;
+	}
 
 }

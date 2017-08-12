@@ -6,12 +6,15 @@
 #include "common.h"
 #include "KeyFrame.h"
 #include "ControlPoint.h"
+#include "io.h"
 
 typedef pair<int, int> Edge;
 
 class Deformation {
 
 private:
+	string videoName;
+
 	int frameNum;
 	Size frameSize;
 	vector<KeyFrame> &frames;
@@ -28,7 +31,7 @@ private:
 	vector<Mat> deformedFrames;
 
 	void DrawSubdiv( const Mat &, const Subdiv2D & );
-	void DrawEdge( int, int );
+	void DrawEdge( int, int, Mat &edgeImg );
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
 	void CalcBaryCoordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
@@ -55,6 +58,7 @@ private:
 	void MinEnergyTemporal( vector<Point2f> &newControlPoints, double lambda );
 
 	void CollinearConstraint( vector<Point2f> &newControlPoints );
+	void UpdateControlPoints( const vector<Point2f> &newControlPoints );
 
 public:
 
@@ -67,7 +71,7 @@ public:
 
 	vector<Mat> deformedMap;
 
-	Deformation( vector<KeyFrame> & );
+	Deformation( vector<KeyFrame> &, const string &_videoName );
 	void BuildControlPoints();
 	
 	void InitDeformation( double, double );
@@ -77,6 +81,7 @@ public:
 	void CalcDeformedMap();
 	void RenderFrame( const Mat &, const Mat &, Mat & );
 	void RenderKeyFrames();
+	void RenderFrames( const vector<Mat> &inputFrames, int shotSt, int shotEd );
 
 };
 

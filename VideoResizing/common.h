@@ -14,14 +14,21 @@ using namespace cv;
 
 const double INF = 1e10;
 const double eps = 1e-8;
-const double resize_rate = 0.6;
 const double VERY_SMALL = 1e-2;
-const int DIRECTIONS_NUM = 8;
-const double ITER_TERMINATE = 0.05;
-const int MIN_ENERGY_ITERS = 200;
-const Point directions[DIRECTIONS_NUM] = {
+const int NEIGHBORS_NUM = 8;
+const double ITER_TERMINATE = 0.1;
+const int MIN_ENERGY_ITERS = 300;
+const Point neighbors[NEIGHBORS_NUM] = {
 	Point( 0, 1 ), Point( 1, 0 ), Point( -1, 0 ), Point( 0, -1 ), 
 	Point( 1, 1 ), Point( 1, -1 ), Point( -1, 1 ), Point( -1, -1 ) 
+};
+const int LARGE_NEIGHBORS_NUM = 24;
+const Point largeNeighbors[LARGE_NEIGHBORS_NUM] = {
+	Point( -2, -2 ), Point( -1, -2 ), Point( 0, -2 ), Point( 1, -2 ), Point( 2, -2 ),
+	Point( -2, -1 ), Point( -1, -1 ), Point( 0, -1 ), Point( 1, -1 ), Point( 2, -1 ),
+	Point( -2, 0 ), Point( -1, 0 ), Point( 1, 0 ), Point( 2, 0 ),
+	Point( -2, 1 ), Point( -1, 1 ), Point( 0, 1 ), Point( 1, 1 ), Point( 2, 1 ),
+	Point( -2, 2 ), Point( -1, 2 ), Point( 0, 2 ), Point( 1, 2 ), Point( 2, 2 )
 };
 const string TEST_PATH = "./test/";
 const string INPUT_PATH = "./input/";
@@ -29,9 +36,9 @@ const string INPUT_PATH = "./input/";
 #define sqr(_x) ((_x) * (_x))
 
 const int THRES_SHOTCUT = 10;
-const int THRES_KEYFRAME = 1;
+const int THRES_KEYFRAME = 2;
 const int QUANTIZE_LEVEL = 5;
-const int MAX_SUPERPIXEL_NUM = 100;
+const int MAX_SUPERPIXEL_NUM = 10;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 5;
@@ -61,6 +68,7 @@ void NormalizeVec( vector<T> &vec ) {
 		eleMax = max( eleMax, ele );
 	}
 	eleMin -= VERY_SMALL;
+	eleMax += VERY_SMALL;
 	T eleSpan = eleMax - eleMin;
 	for ( auto &ele : vec ) {
 		ele = (ele - eleMin) / eleSpan;
@@ -130,6 +138,16 @@ double DotProduct( const T &p1, const T &p2 ) {
 template<class T>
 double DotProduct( const T &p0, const T &p1, const T &p2 ) {
 	DotProduct( p1 - p0, p2 - p0 );
+}
+
+template<class T>
+bool CmpPairFirst( const T &e0, const T &e1) {
+	return e0.first < e1.first;
+}
+
+template<class T>
+bool CmpPairSecond( const T &e0, const T &e1 ) {
+	return e0.second < e1.second;
 }
 
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );

@@ -107,7 +107,7 @@ void KeyFrame::QuantizeColorSpace(const vector<Vec3f> &_palette, const Mat &_pal
 	cvtColor( quantizeMap, quantizeMap, COLOR_Lab2BGR );
 	quantizeMap.convertTo( quantizeMap, CV_8UC3, 255 );
 	imshow( "Quantize Map", quantizeMap );
-	waitKey( 1 );*/
+	waitKey( 0 );*/
 #endif
 	
 }
@@ -199,6 +199,105 @@ void KeyFrame::CalcSuperpixelColorHist() {
 	}
 }
 
+void KeyFrame::SegVerticalEdges() {
+	
+#define DEBUG_VERTICAL_EDGES
+
+	Mat derivYMat;
+
+	Sobel( grayImg, derivYMat, CV_16S, 1, 0, CV_SCHARR );
+	derivYMat = abs( derivYMat );
+	normalize( derivYMat, derivYMat, 0, 255, NORM_MINMAX );
+	derivYMat.convertTo( derivYMat, CV_8UC1, 1 );
+
+	vector< pair<int, Point> > edgeSeeds;
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			if ( derivYMat.at<uchar>( y, x ) > 128 ) {
+				edgeSeeds.push_back( make_pair( -(int)derivYMat.at<uchar>( y, x ), Point( x, y ) ) );
+			}
+		}
+	}
+
+	sort( edgeSeeds.begin(), edgeSeeds.end(), CmpPairFirst< pair<int, Point> > );
+
+	verticalEdgesLabel = Mat( size, CV_32SC1, Scalar( -1 ) );
+	verticalEdgesNum = 0;
+	for ( const auto &edgeSeed: edgeSeeds ) {
+
+		if ( verticalEdgesLabel.at<int>( edgeSeed.second ) != -1 ) continue;
+
+		verticalEdgesLabel.at<int>( edgeSeed.second ) = verticalEdgesNum;
+
+		queue<Point> edgeQue;
+		edgeQue.push( edgeSeed.second );
+
+		while ( !edgeQue.empty() ) {
+
+			Point curPt = edgeQue.front();
+			edgeQue.pop();
+
+			for ( size_t k = 0; k < LARGE_NEIGHBORS_NUM; k++ ) {
+
+				Point neighborPt = curPt + largeNeighbors[k];
+				if ( CheckOutside( neighborPt, size ) ) continue;
+				if ( verticalEdgesLabel.at<int>( neighborPt ) != -1 ) continue;
+				if ( derivYMat.at<uchar>( neighborPt ) >= 50 && 
+					 derivYMat.at<uchar>( neighborPt ) <= derivYMat.at<uchar>( curPt ) ) {
+					
+					verticalEdgesLabel.at<int>( neighborPt ) = verticalEdgesNum;
+					edgeQue.push( neighborPt );
+
+				}
+			}
+		}
+
+		verticalEdgesNum++;
+		
+	}
+
+#ifdef DEBUG_VERTICAL_EDGES
+	imshow( "Vertical Edges", derivYMat );
+
+	for ( int i = 0; i < verticalEdgesNum; i++ ) {
+
+		Mat tmp( size, CV_8UC1, Scalar( 0 ) );
+		for ( int y = 0; y < rows; y++ ) {
+			for ( int x = 0; x < cols; x++ ) {
+				if ( verticalEdgesLabel.at<int>( y, x ) == i ) {
+					tmp.at<uchar>( y, x ) = 255;
+				}
+			}
+		}
+
+		cout << "Edge Label " << i << endl;
+		imshow( "Edge", tmp );
+		waitKey( 0 );
+
+	}
+	waitKey( 0 );
+#endif
+
+}
+
+void KeyFrame::SegHorizontalEdges() {
+
+#define DEBUG_HORIZONTAL_EDGES
+
+	Mat derivXMat;
+
+	Sobel( grayImg, derivXMat, CV_16S, 0, 1, CV_SCHARR );
+	derivXMat = abs( derivXMat );
+
+#ifdef DEBUG_HORIZONTAL_EDGES
+	normalize( derivXMat, derivXMat, 0, 255, NORM_MINMAX );
+	derivXMat.convertTo( derivXMat, CV_8UC1, 1 );
+
+	imshow( "Horizontal Edges", derivXMat );
+	waitKey( 0 );
+#endif
+}
+
 void KeyFrame::CalcSpatialContrast() {
 
 	superpixelSpatialContrast = vector<double>( superpixelNum, 0 );
@@ -226,19 +325,21 @@ void KeyFrame::CalcSpatialContrast() {
 #ifdef DEBUG
 	////cout << "Before:" << endl;
 	////for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
-	//NormalizeVec( superpixelSpatialContrast );
+	//vector<double> tmp = superpixelSpatialContrast;
+	//NormalizeVec( tmp );
 	////cout << "After:" << endl;
 	////for ( auto ele : superpixelSpatialContrast ) cout << ele << endl;
 
-	//spatialContrastMap = Mat::zeros( size, CV_32FC1 );
+	/*spatialContrastMap = Mat::zeros( size, CV_32FC1 );
 
-	//for ( int y = 0; y < rows; y++ ) {
-	//	for ( int x = 0; x < cols; x++ ) {
-	//		spatialContrastMap.at<float>( y, x ) = superpixelSpatialContrast[pixelLabel.at<int>( y, x )];
-	//	}
-	//}
-	//imshow( "Spatial Contrast Map", spatialContrastMap );
-	//waitKey( 1 );
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			spatialContrastMap.at<float>( y, x ) = tmp[pixelLabel.at<int>( y, x )];
+		}
+	}
+	cout << frameId << endl;
+	imshow( "Spatial Contrast Map", spatialContrastMap );
+	waitKey( 0 );*/
 #endif
 }
 
@@ -273,20 +374,22 @@ void KeyFrame::CalcTemporalContrast() {
 #ifdef DEBUG
 	////cout << "Before:" << endl;
 	////for ( auto ele : superpixelTemporalContrast ) cout << ele << endl;
-	//NormalizeVec( superpixelTemporalContrast );
+	//vector<double> tmp = superpixelTemporalContrast;
+	//NormalizeVec( tmp );
 	////cout << "After:" << endl;
 	////for ( auto ele : superpixelTemporalContrast ) cout << ele << endl;
 
-	//temporalContrastMap = Mat::zeros( size, CV_32FC1 );
+	/*temporalContrastMap = Mat::zeros( size, CV_32FC1 );
 
-	//for ( int y = 0; y < rows; y++ ) {
-	//	for ( int x = 0; x < cols; x++ ) {
-	//		int label = pixelLabel.at<int>( y, x );
-	//		temporalContrastMap.at<float>( y, x ) = superpixelTemporalContrast[label];
-	//	}
-	//}
-	//imshow( "Motion Contrast Map", temporalContrastMap );
-	//waitKey( 1 );
+	for ( int y = 0; y < rows; y++ ) {
+		for ( int x = 0; x < cols; x++ ) {
+			int label = pixelLabel.at<int>( y, x );
+			temporalContrastMap.at<float>( y, x ) = tmp[label];
+		}
+	}
+	cout << frameId << endl;
+	imshow( "Motion Contrast Map", temporalContrastMap );
+	waitKey( 0 );*/
 #endif
 
 }
@@ -315,8 +418,9 @@ void KeyFrame::CalcSaliencyMap() {
 		}
 	}
 #ifdef DEBUG
-	//imshow( "Saliency Map", saliencyMap );
-	//waitKey( 1 );
+	/*cout << frameId << endl;
+	imshow( "Saliency Map", saliencyMap );
+	waitKey( 0 );*/
 #endif
 }
 

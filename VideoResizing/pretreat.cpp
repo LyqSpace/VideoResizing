@@ -206,6 +206,16 @@ void CalcSuperpixel( vector<KeyFrame> &frames ) {
 		frame.SegSuperpixel();
 		frame.MarkBoundLabel();
 		frame.CalcSuperpixelColorHist();
-		
 	}
+}
+
+void SegEdges( vector<KeyFrame> &frames ) {
+
+	printf( "Segment key frames edges.\n" );
+
+	for ( auto &frame : frames ) {
+		frame.SegVerticalEdges();
+		frame.SegHorizontalEdges();
+	}
+
 }

@@ -2,6 +2,7 @@
 #define KEYFRAME_H
 
 #include <cmath>
+#include <queue>
 #include "common.h"
 #include "slic.h"
 
@@ -36,6 +37,9 @@ public:
 
 	vector<int> superpixelBoundLabel;
 
+	int verticalEdgesNum, horizontalEdgesNum;
+	Mat verticalEdgesLabel, horizontalEdgesLabel;
+
 	Mat saliencyMap;
 	vector<double> superpixelSaliency;
 
@@ -52,6 +56,10 @@ public:
 	void MarkBoundLabel();
 	void QuantizeColorSpace( const vector<Vec3f> &, const Mat & );
 	void CalcSuperpixelColorHist();
+
+	void SegVerticalEdges();
+	void SegHorizontalEdges();
+
 	void CalcSpatialContrast();
 	void CalcTemporalContrast();
 	void CalcSaliencyMap();

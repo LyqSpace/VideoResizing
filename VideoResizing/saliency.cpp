@@ -153,8 +153,9 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 	for ( size_t i = 0; i < frames.size(); i++ ) {
 #ifdef DEBUG
 		//imshow( "Saliency Map Before", frames[i].saliencyMap );
-		//imshow( "Smoothed Saliency Map", smoothedSaliencyMapVec[i] );
-		//waitKey( 1 );
+	/*	cout << frames[i].frameId << endl;
+		imshow( "Smoothed Saliency Map", smoothedSaliencyMapVec[i] );
+		waitKey( 0 );*/
 #endif
 		frames[i].saliencyMap = smoothedSaliencyMapVec[i].clone();
 		frames[i].SumSuperpixelSaliency();
