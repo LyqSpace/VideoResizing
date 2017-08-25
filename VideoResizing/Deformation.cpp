@@ -248,7 +248,7 @@ Point2f Deformation::GetBoundPoint( int index0, int index1 ) {
 
 void Deformation::DelaunayDivide() {
 
-//#define DEBUG_DIVIDE
+#define DEBUG_DELAUNAY_DIVIDE
 
 	printf( "\tDelaunay divide each key frames.\n" );
 
@@ -270,8 +270,8 @@ void Deformation::DelaunayDivide() {
 			subdiv.insert( frames[i].superpixelCenter[j] );
 			controlPointsNum++;
 
-#ifdef DEBUG_DIVIDE
-			//DrawSubdiv( frames[i].img, subdiv );
+#ifdef DEBUG_DELAUNAY_DIVIDE
+			DrawSubdiv( frames[i].img, subdiv );
 #endif
 
 		}
@@ -386,12 +386,12 @@ void Deformation::DelaunayDivide() {
 			}
 		}
 
-#ifdef DEBUG_DIVIDE
-		//Mat img;
-		//DrawEdge( i, ORIGIN_POS_WITH_FRAME, img );
-		//imshow( "Edge", img );
-		////frames[i].DrawImgWithContours();
-		//waitKey( 0 );
+#ifdef DEBUG_DELAUNAY_DIVIDE
+		Mat img;
+		DrawEdge( i, ORIGIN_POS_WITH_FRAME, img );
+		imshow( "Edge", img );
+		frames[i].DrawImgWithContours();
+		waitKey( 0 );
 #endif
 
 	}

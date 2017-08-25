@@ -200,8 +200,6 @@ void KeyFrame::CalcSuperpixelColorHist() {
 }
 
 void KeyFrame::SegVerticalEdges() {
-	
-#define DEBUG_VERTICAL_EDGES
 
 	Mat derivYMat;
 

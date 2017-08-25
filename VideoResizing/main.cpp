@@ -72,7 +72,7 @@ int main( int argc, char *argv[] ) {
 
 			QuantizeFrames( keyFrames );
 			CalcSuperpixel( keyFrames );
-			SegEdges( keyFrames );
+			// SegEdges( keyFrames );
 
 			CalcSaliencyMap( keyFrames );
 			SmoothSaliencyMap( keyFrames );

@@ -209,13 +209,11 @@ void CalcSuperpixel( vector<KeyFrame> &frames ) {
 	}
 }
 
-void SegEdges( vector<KeyFrame> &frames ) {
+void DetectSpatialStructure( vector<KeyFrame> &frames ) {
 
 	printf( "Segment key frames edges.\n" );
 
 	for ( auto &frame : frames ) {
-		frame.SegVerticalEdges();
-		frame.SegHorizontalEdges();
 	}
 
 }

@@ -19,6 +19,6 @@ void CalcPalette( const vector<KeyFrame> &, vector<Vec3f> & );
 
 void QuantizeFrames( vector<KeyFrame> & );
 
-void SegEdges( vector<KeyFrame> & );
+void DetectSpatialStructure( vector<KeyFrame> & );
 
 #endif

@@ -15,9 +15,9 @@ using namespace cv;
 const double INF = 1e10;
 const double eps = 1e-8;
 const double VERY_SMALL = 1e-2;
-const int NEIGHBORS_NUM = 8;
 const double ITER_TERMINATE = 0.1;
 const int MIN_ENERGY_ITERS = 300;
+const int NEIGHBORS_NUM = 8;
 const Point neighbors[NEIGHBORS_NUM] = {
 	Point( 0, 1 ), Point( 1, 0 ), Point( -1, 0 ), Point( 0, -1 ), 
 	Point( 1, 1 ), Point( 1, -1 ), Point( -1, 1 ), Point( -1, -1 ) 
@@ -38,10 +38,10 @@ const string INPUT_PATH = "./input/";
 const int THRES_SHOTCUT = 10;
 const int THRES_KEYFRAME = 2;
 const int QUANTIZE_LEVEL = 5;
-const int MAX_SUPERPIXEL_NUM = 10;
+const int MAX_SUPERPIXEL_NUM = 50;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
-const int SALIENCY_SMOOTH_SPAN = 5;
+const int SALIENCY_SMOOTH_SPAN = 11;
 
 const double ALPHA_STRUCTURE_L = 1;
 const double ALPHA_STRUCTURE_D = 100;
@@ -73,11 +73,6 @@ void NormalizeVec( vector<T> &vec ) {
 	for ( auto &ele : vec ) {
 		ele = (ele - eleMin) / eleSpan;
 	}
-}
-
-template<class T>
-double NormL2( const T &p0, const T &p1 ) {
-	return sqrt( sqr( p0.x - p1.x ) + sqr( p0.y - p1.y ) );
 }
 
 template<class T>
@@ -126,18 +121,8 @@ double CrossProduct( const T &p1, const T &p2 ) {
 }
 
 template<class T>
-double CrossProduct( const T &p0, const T &p1, const T &p2 ) {
-	return CrossProduct( p1 - p0, p2 - p0 );
-}
-
-template<class T>
 double DotProduct( const T &p1, const T &p2 ) {
 	return p1.x * p2.x + p1.y * p2.y;
-}
-
-template<class T>
-double DotProduct( const T &p0, const T &p1, const T &p2 ) {
-	DotProduct( p1 - p0, p2 - p0 );
 }
 
 template<class T>
@@ -150,6 +135,12 @@ bool CmpPairSecond( const T &e0, const T &e1 ) {
 	return e0.second < e1.second;
 }
 
+template<class T>
+void  RestrictInside( T &p, const Size &size ) {
+	p.x = max( 0, min( size.width - 1, p.x ) );
+	p.y = max( 0, min( size.height - 1, p.y ) );
+}
+
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );
 
 string Point2fToString( const Point2f & );
@@ -158,8 +149,5 @@ Point2f StringToPoint2f( const string & );
 
 Point Point2fToPoint( const Point2f & );
 
-void  RestrictInside( Point2f &p, Size &size );
-
-void  RestrictInside( Point &p, Size &size );
 
 #endif

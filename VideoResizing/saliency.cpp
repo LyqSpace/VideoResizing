@@ -90,6 +90,7 @@ void CalcSaliencyMap( vector<KeyFrame> &frames ) {
 
 void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 
+// #define SMOOTH_SALIENCY_MAP
 	printf( "Smooth key frames saliency map.\n" );
 
 	int frameSpan = SALIENCY_SMOOTH_SPAN >> 1;
@@ -101,7 +102,7 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 		smoothWeight.push_back( exp( -(float)sqr( i - frameSpan ) / sqr( frameSpan ) ) );
 	}
 
-#ifdef DEBUG
+#ifdef SMOOTH_SALIENCY_MAP
 	//cout << frameSpan << endl;
 	//for ( auto x : smoothWeight ) cout << x << endl;
 #endif
@@ -151,11 +152,11 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 	}
 
 	for ( size_t i = 0; i < frames.size(); i++ ) {
-#ifdef DEBUG
-		//imshow( "Saliency Map Before", frames[i].saliencyMap );
-	/*	cout << frames[i].frameId << endl;
+#ifdef SMOOTH_SALIENCY_MAP
+		imshow( "saliency map before", frames[i].saliencyMap );
+		cout << frames[i].frameId << endl;
 		imshow( "Smoothed Saliency Map", smoothedSaliencyMapVec[i] );
-		waitKey( 0 );*/
+		waitKey( 0 );
 #endif
 		frames[i].saliencyMap = smoothedSaliencyMapVec[i].clone();
 		frames[i].SumSuperpixelSaliency();
