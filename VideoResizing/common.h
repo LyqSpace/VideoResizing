@@ -125,29 +125,11 @@ double DotProduct( const T &p1, const T &p2 ) {
 	return p1.x * p2.x + p1.y * p2.y;
 }
 
-template<class T>
-bool CmpPairFirst( const T &e0, const T &e1) {
-	return e0.first < e1.first;
-}
+void  RestrictInside( Point &p, const Size &size );
 
-template<class T>
-bool CmpPairSecond( const T &e0, const T &e1 ) {
-	return e0.second < e1.second;
-}
-
-template<class T>
-void  RestrictInside( T &p, const Size &size ) {
-	p.x = max( 0, min( size.width - 1, p.x ) );
-	p.y = max( 0, min( size.height - 1, p.y ) );
-}
+void  RestrictInside( Point2f &p, const Size &size ); 
 
 double CalcVec3fDiff( const Vec3f &, const Vec3f & );
-
-string Point2fToString( const Point2f & );
-
-Point2f StringToPoint2f( const string & );
-
-Point Point2fToPoint( const Point2f & );
 
 
 #endif

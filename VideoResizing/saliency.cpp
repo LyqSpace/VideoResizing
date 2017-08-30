@@ -131,7 +131,7 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 				p = Point2f( x, y );
 
 				for ( int j = 1; j <= frameSpan; j++ ) {
-					if ( i + j >= frames.size() ) break;
+					if ( i + j >= (int)frames.size() ) break;
 					Point2f flow = frames[i + j - 1].forwardFlowMap.at<Point2f>( FloorToInt( p.y ), FloorToInt( p.x ) );
 					p.x += flow.x;
 					p.y += flow.y;
@@ -141,7 +141,7 @@ void SmoothSaliencyMap( vector<KeyFrame> &frames ) {
 				}
 
 				sumSaliency /= frameCount;
-				smoothedSaliencyMap.at<float>( y, x ) = sumSaliency;
+				smoothedSaliencyMap.at<float>( y, x ) = (float)sumSaliency;
 
 			}
 		}

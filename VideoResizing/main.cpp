@@ -78,7 +78,6 @@ int main( int argc, char *argv[] ) {
 			SmoothSaliencyMap( keyFrames );
 
 			Deformation deformation( keyFrames, videoName );
-			deformation.BuildControlPoints();
 			deformation.InitDeformation( deformedScaleX, deformedScaleY );
 			deformation.MinimizeEnergy();
 			deformation.CalcDeformedMap();

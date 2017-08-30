@@ -46,16 +46,16 @@ string GetOutputVideoPath( const string &videoName, int type ) {
 
 void ConvertVideoToFrames( const string &videoName ) {
 	
-	mkdir( TEST_PATH.c_str() );
+	_mkdir( TEST_PATH.c_str() );
 
 	string path = GetRootFolderPath( videoName );
-	mkdir( path.c_str() );
+	_mkdir( path.c_str() );
 	path = GetFramesFolderPath( videoName );
-	mkdir( path.c_str() );
+	_mkdir( path.c_str() );
 	path = GetResultsFolderPath( videoName );
-	mkdir( path.c_str() );
+	_mkdir( path.c_str() );
 	path = GetKeyFramesFolderPath( videoName );
-	mkdir( path.c_str() );
+	_mkdir( path.c_str() );
 
 	string fileName = INPUT_PATH + videoName;
 	VideoCapture cap;
@@ -117,6 +117,8 @@ void ReadKeyArr( vector<int> &keyArr, const string &videoName ) {
 
 void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<KeyFrame> &keyFrames, const string &videoName ) {
 
+#define DEBUG_SHORT_FRAMES
+
 	printf( "Read key frames. Shotcut range: %d to %d. ", shotSt, shotEd );
 	
 	string framesFolderPath = GetFramesFolderPath( videoName );
@@ -131,8 +133,8 @@ void ReadKeyFrames( int shotSt, int shotEd, const vector<int> &keyArr, vector<Ke
 		KeyFrame keyFrame( frame, keyId );
 		keyFrames.push_back( keyFrame );
 
-#ifdef DEBUG
-		// if ( keyFrames.size() > 2 ) break;
+#ifdef DEBUG_SHORT_FRAMES
+		if ( keyFrames.size() > 2 ) break;
 #endif
 	}
 

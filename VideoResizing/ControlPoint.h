@@ -28,14 +28,16 @@ public:
 	double saliency;
 	Point2f flow;
 
-	vector<int> shapeNeighbors;
-	vector<int> structureNeighbors;
+	vector<int> boundNeighbors;
+	vector<int> superpixelNeighbors;
 	vector< BaryCoord > temporalNeighbors;
 
 	ControlPoint();
 	ControlPoint( int, const Point2f &, int, int, double );
-	void AddShapeNeighbor( int neighborIndex );
-	void AddStructureNeighbor( int neighborIndex);
+
+	void AddBoundNeighbor( int neighborIndex );
+	void AddSuperpixelNeighbor( int neighborIndex );
+	void AddSpatialNeighbor( int neighborIndex );
 	void AddTemporalNeighbor( const vector<BaryCoord> &baryCoordinate );
 
 	void PrintSpatialBound();

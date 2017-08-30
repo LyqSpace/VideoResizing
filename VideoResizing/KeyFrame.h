@@ -9,13 +9,13 @@
 class KeyFrame {
 
 private:
-	Mat imgWithContours, spatialContrastMap, temporalContrastMap;
+	
 	Mat paletteMap, paletteDist;
-
 	vector<Vec3f> palette;
 	vector< vector<int> > superpixelColorHist;
 	vector<int> superpixelCard;
 	
+	Mat spatialContrastMap, temporalContrastMap;
 	vector<double> superpixelSpatialContrast, superpixelTemporalContrast;
 
 	double CalcColorHistDiff( int, int );
@@ -37,9 +37,6 @@ public:
 
 	vector<int> superpixelBoundLabel;
 
-	int verticalEdgesNum, horizontalEdgesNum;
-	Mat verticalEdgesLabel, horizontalEdgesLabel;
-
 	Mat saliencyMap;
 	vector<double> superpixelSaliency;
 
@@ -51,14 +48,11 @@ public:
 	vector<Point> superpixelCenter;
 
 	KeyFrame( const Mat &, int );
-	void DrawImgWithContours();
+	void DrawImgWithContours( SLIC & );
 	void SegSuperpixel();
 	void MarkBoundLabel();
 	void QuantizeColorSpace( const vector<Vec3f> &, const Mat & );
 	void CalcSuperpixelColorHist();
-
-	void SegVerticalEdges();
-	void SegHorizontalEdges();
 
 	void CalcSpatialContrast();
 	void CalcTemporalContrast();

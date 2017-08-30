@@ -22,13 +22,14 @@ KeyFrame::KeyFrame( const Mat &_img, int _frameId ) {
 
 void KeyFrame::FreeMemory() {
 
-	spatialContrastMap.release();
-	temporalContrastMap.release();
 	paletteMap.release();
 	paletteDist.release();
-
 	palette.clear();
 	superpixelColorHist.clear();
+	superpixelCard.clear();
+
+	spatialContrastMap.release();
+	temporalContrastMap.release();
 	superpixelSpatialContrast.clear();
 	superpixelTemporalContrast.clear();
 
@@ -37,8 +38,9 @@ void KeyFrame::FreeMemory() {
 
 }
 
-void KeyFrame::DrawImgWithContours() {
-	imshow( "Image With Contours", imgWithContours );
+void KeyFrame::DrawImgWithContours( SLIC &slic ) {
+	Mat img = slic.GetImgWithContours( Scalar( 255, 255, 255 ) );
+	imshow( "Image With Contours", img );
 	waitKey( 1 );
 }
 
@@ -71,7 +73,7 @@ double KeyFrame::CalcSpatialDiff( int spId0, int spId1 ) {
 
 	Point p0 = superpixelCenter[spId0];
 	Point p1 = superpixelCenter[spId1];
-	return NormL2( p0, p1 );
+	return NormL2( p0 - p1 );
 }
 
 void KeyFrame::QuantizeColorSpace(const vector<Vec3f> &_palette, const Mat &_paletteDist) {
@@ -118,7 +120,10 @@ void KeyFrame::SegSuperpixel() {
 	int *label;
 	
 	slic.GenerateSuperpixels(img, superpixelNum );
-	imgWithContours = slic.GetImgWithContours( Scalar( 255, 255, 255 ) );
+
+#ifdef DEBUG_SEG_SUPERPIXEL
+	DrawImgWithContours(slic);
+#endif
 	
 	label = slic.GetLabel();
 	superpixelNum = 0;
@@ -148,11 +153,11 @@ void KeyFrame::SegSuperpixel() {
 		superpixelCenter[i].y /= superpixelCard[i];
 	}
 	
-#ifdef DEBUG
-	//cout << "\tSuperpixel Num: " << superpixelNum << endl;
-	/*imgWithContours = slic.GetImgWithContours( cv::Scalar( 0, 0, 255 ) );
+#ifdef DEBUG_SEG_SUPERPIXEL
+	cout << "\tSuperpixel Num: " << superpixelNum << endl;
+	imgWithContours = slic.GetImgWithContours( cv::Scalar( 0, 0, 255 ) );
 	imshow( "Img with Contours", imgWithContours );
-	waitKey( 1 );*/
+	waitKey( 1 );
 #endif
 
 }
@@ -197,103 +202,6 @@ void KeyFrame::CalcSuperpixelColorHist() {
 			superpixelColorHist[labelIndex][paletteIndex]++;
 		}
 	}
-}
-
-void KeyFrame::SegVerticalEdges() {
-
-	Mat derivYMat;
-
-	Sobel( grayImg, derivYMat, CV_16S, 1, 0, CV_SCHARR );
-	derivYMat = abs( derivYMat );
-	normalize( derivYMat, derivYMat, 0, 255, NORM_MINMAX );
-	derivYMat.convertTo( derivYMat, CV_8UC1, 1 );
-
-	vector< pair<int, Point> > edgeSeeds;
-	for ( int y = 0; y < rows; y++ ) {
-		for ( int x = 0; x < cols; x++ ) {
-			if ( derivYMat.at<uchar>( y, x ) > 128 ) {
-				edgeSeeds.push_back( make_pair( -(int)derivYMat.at<uchar>( y, x ), Point( x, y ) ) );
-			}
-		}
-	}
-
-	sort( edgeSeeds.begin(), edgeSeeds.end(), CmpPairFirst< pair<int, Point> > );
-
-	verticalEdgesLabel = Mat( size, CV_32SC1, Scalar( -1 ) );
-	verticalEdgesNum = 0;
-	for ( const auto &edgeSeed: edgeSeeds ) {
-
-		if ( verticalEdgesLabel.at<int>( edgeSeed.second ) != -1 ) continue;
-
-		verticalEdgesLabel.at<int>( edgeSeed.second ) = verticalEdgesNum;
-
-		queue<Point> edgeQue;
-		edgeQue.push( edgeSeed.second );
-
-		while ( !edgeQue.empty() ) {
-
-			Point curPt = edgeQue.front();
-			edgeQue.pop();
-
-			for ( size_t k = 0; k < LARGE_NEIGHBORS_NUM; k++ ) {
-
-				Point neighborPt = curPt + largeNeighbors[k];
-				if ( CheckOutside( neighborPt, size ) ) continue;
-				if ( verticalEdgesLabel.at<int>( neighborPt ) != -1 ) continue;
-				if ( derivYMat.at<uchar>( neighborPt ) >= 50 && 
-					 derivYMat.at<uchar>( neighborPt ) <= derivYMat.at<uchar>( curPt ) ) {
-					
-					verticalEdgesLabel.at<int>( neighborPt ) = verticalEdgesNum;
-					edgeQue.push( neighborPt );
-
-				}
-			}
-		}
-
-		verticalEdgesNum++;
-		
-	}
-
-#ifdef DEBUG_VERTICAL_EDGES
-	imshow( "Vertical Edges", derivYMat );
-
-	for ( int i = 0; i < verticalEdgesNum; i++ ) {
-
-		Mat tmp( size, CV_8UC1, Scalar( 0 ) );
-		for ( int y = 0; y < rows; y++ ) {
-			for ( int x = 0; x < cols; x++ ) {
-				if ( verticalEdgesLabel.at<int>( y, x ) == i ) {
-					tmp.at<uchar>( y, x ) = 255;
-				}
-			}
-		}
-
-		cout << "Edge Label " << i << endl;
-		imshow( "Edge", tmp );
-		waitKey( 0 );
-
-	}
-	waitKey( 0 );
-#endif
-
-}
-
-void KeyFrame::SegHorizontalEdges() {
-
-#define DEBUG_HORIZONTAL_EDGES
-
-	Mat derivXMat;
-
-	Sobel( grayImg, derivXMat, CV_16S, 0, 1, CV_SCHARR );
-	derivXMat = abs( derivXMat );
-
-#ifdef DEBUG_HORIZONTAL_EDGES
-	normalize( derivXMat, derivXMat, 0, 255, NORM_MINMAX );
-	derivXMat.convertTo( derivXMat, CV_8UC1, 1 );
-
-	imshow( "Horizontal Edges", derivXMat );
-	waitKey( 0 );
-#endif
 }
 
 void KeyFrame::CalcSpatialContrast() {
@@ -398,11 +306,11 @@ void KeyFrame::CalcSaliencyMap() {
 
 	for ( int i = 0; i < superpixelNum; i++ ) {
 		superpixelSaliency[i] = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
-#ifdef DEBUG
-		/*double tmp1 = superpixelSpatialContrast[i] + superpixelTemporalContrast[i];
+#ifdef DEBUG_SALIENCY_MAP
+		double tmp1 = superpixelSpatialContrast[i] + superpixelTemporalContrast[i];
 		double tmp2 = superpixelSpatialContrast[i] * superpixelTemporalContrast[i];
-		printf( "Spatial: %.3lf, Temporal: %.3lf, Plus: %.3lf, Multi: %.3lf\n", superpixelSpatialContrast[i], superpixelTemporalContrast[i], tmp1, tmp2 );*/
-#endif DEBUG
+		printf( "Spatial: %.3lf, Temporal: %.3lf, Plus: %.3lf, Multi: %.3lf\n", superpixelSpatialContrast[i], superpixelTemporalContrast[i], tmp1, tmp2 );
+#endif
 	}
 
 	NormalizeVec( superpixelSaliency );
@@ -415,10 +323,10 @@ void KeyFrame::CalcSaliencyMap() {
 			saliencyMap.at<float>( y, x ) = superpixelSaliency[label];
 		}
 	}
-#ifdef DEBUG
-	/*cout << frameId << endl;
+#ifdef DEBUG_SALIENCY_MAP
+	cout << frameId << endl;
 	imshow( "Saliency Map", saliencyMap );
-	waitKey( 0 );*/
+	waitKey( 0 );
 #endif
 }
 

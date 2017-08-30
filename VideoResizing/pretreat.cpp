@@ -186,7 +186,7 @@ void QuantizeFrames( vector<KeyFrame> &frames ) {
 	Mat paletteDist = Mat::zeros( paletteSize, paletteSize, CV_32FC1 );
 	for ( size_t c1 = 0; c1 < palette.size(); c1++ ) {
 		for ( size_t c2 = c1 + 1; c2 < palette.size(); c2++ ) {
-			paletteDist.at<float>( c1, c2 ) = CalcVec3fDiff( palette[c1], palette[c2] );
+			paletteDist.at<float>( c1, c2 ) = (float)CalcVec3fDiff( palette[c1], palette[c2] );
 			paletteDist.at<float>( c2, c1 ) = paletteDist.at<float>( c1, c2 );
 		}
 	}

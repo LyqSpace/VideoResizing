@@ -22,40 +22,32 @@ private:
 
 	int controlPointsNum;
 	vector<ControlPoint> controlPoints;
+	vector<Mat> controlPointsMap;
 	vector< vector<int> > frameControlPointIndex;
-	vector< pair<int, int> > structureEdges;
+	vector< pair<int, int> > spatialEdges;
 
 	double deformedScaleX, deformedScaleY;
 	Size deformedFrameSize;
 
 	vector<Mat> deformedFrames;
 
+	void BuildControlPoints();
+	void AddTemporalNeighbors();
+	void AddSpatialNeighbors();
+
 	void DrawSubdiv( const Mat &, const Subdiv2D & );
 	void DrawEdge( int, int, Mat &edgeImg );
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
 	void CalcBaryCoordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
-	void CalcBaryCoord1( map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord );
-	void CalcBaryCoord2( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
-	void CalcBaryCoord3( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
-	int LocatePoint( Subdiv2D &subdiv, map<string, int> &posToPointIndexMap, const Point2f &p, vector<BaryCoord> &baryCoord );
+	void CalcBaryCoord1( const Mat &cpMap, const Point2f &p, vector<BaryCoord> &baryCoord );
+	void CalcBaryCoord2( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
+	void CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
+	int LocatePoint( Subdiv2D &subdiv, const Mat &cpMap, const Point2f &p, vector<BaryCoord> &baryCoord );
 	Point2f CalcPointByBaryCoord( const vector<BaryCoord> &, int );
 
 	Point2f GetBoundPoint( int, int );
 	void DelaunayDivide();
-	void AddTemporalNeighbors();
-
-	double CalcEnergyStructureL();
-	double CalcEnergyStructureD();
-	double CalcEnergyShapeL();
-	double CalcEnergyShapeD();
-	double CalcEnergyTemporal();
-
-	void MinEnergyStructureL( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyStructureD( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyShapeL( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyShapeD( vector<Point2f> &newControlPoints, double lambda );
-	void MinEnergyTemporal( vector<Point2f> &newControlPoints, double lambda );
 
 	void CollinearConstraint( vector<Point2f> &newControlPoints );
 	void UpdateControlPoints( const vector<Point2f> &newControlPoints );
@@ -72,7 +64,6 @@ public:
 	vector<Mat> deformedMap;
 
 	Deformation( vector<KeyFrame> &, const string &_videoName );
-	void BuildControlPoints();
 	
 	void InitDeformation( double, double );
 	double CalcEnergy();

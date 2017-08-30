@@ -7,10 +7,10 @@
 #### Private
 
 
-  - Mat imgWithContours 
   - Mat spatialContrastMap, temporalContrastMap 
   - Mat paletteMap, paletteDist
   - vector\<Vec3f\> palette
+  - ​
 
 
 
