@@ -35,7 +35,7 @@ void ControlPoint::AddTemporalNeighbor( const vector<BaryCoord> &baryCoordinate 
 	temporalNeighbors = baryCoordinate;
 }
 
-void ControlPoint::PrintSpatialBound() {
+void ControlPoint::PrintBoundNeighbors() {
 	for ( const auto &index : boundNeighbors ) printf( "%d ", index );
 	printf( "\n" );
 }

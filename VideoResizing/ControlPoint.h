@@ -37,10 +37,9 @@ public:
 
 	void AddBoundNeighbor( int neighborIndex );
 	void AddSuperpixelNeighbor( int neighborIndex );
-	void AddSpatialNeighbor( int neighborIndex );
 	void AddTemporalNeighbor( const vector<BaryCoord> &baryCoordinate );
 
-	void PrintSpatialBound();
+	void PrintBoundNeighbors();
 	void PrintTemporalNeighbors();
 
 };

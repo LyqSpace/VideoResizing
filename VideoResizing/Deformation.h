@@ -24,6 +24,8 @@ private:
 	vector<ControlPoint> controlPoints;
 	vector<Mat> controlPointsMap;
 	vector< vector<int> > frameControlPointIndex;
+	vector<int> centerControlPointIndex;
+	vector<int> temporalControlPointIndex;
 	vector< pair<int, int> > spatialEdges;
 
 	double deformedScaleX, deformedScaleY;
@@ -39,7 +41,7 @@ private:
 	void DrawEdge( int, int, Mat &edgeImg );
 	void DrawLocate( const Point2f &, const vector<BaryCoord> & );
 
-	void CalcBaryCoordLambda( const Point2f &, const vector<Point2f> &, vector<double> & );
+	void CalcBaryCoordLambda( const Point2f &, vector<Point2f> &, vector<double> & );
 	void CalcBaryCoord1( const Mat &cpMap, const Point2f &p, vector<BaryCoord> &baryCoord );
 	void CalcBaryCoord2( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
 	void CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord );
@@ -47,8 +49,10 @@ private:
 	Point2f CalcPointByBaryCoord( const vector<BaryCoord> &, int );
 
 	Point2f GetBoundPoint( int, int );
-	void DelaunayDivide();
 
+	double CalcSaliencyEnergy();
+	double CalcSpatialEnergy();
+	double CalcTemporalEnergy();
 	void CollinearConstraint( vector<Point2f> &newControlPoints );
 	void UpdateControlPoints( const vector<Point2f> &newControlPoints );
 

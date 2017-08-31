@@ -1007,6 +1007,8 @@ cv::Mat SLIC::GetImgWithContours( cv::Scalar color ) {
 		memcpy( result.data, bufferRGB, m_width*m_height*sizeof( UINT ) );
 		cvtColor( result, result, CV_BGRA2BGR );
 		return result;
+	} else {
+		throw std::invalid_argument( "color must be GRAY or RGB" );
 	}
 
 }

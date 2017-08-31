@@ -43,10 +43,8 @@ const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 11;
 
-const double ALPHA_STRUCTURE_L = 1;
-const double ALPHA_STRUCTURE_D = 100;
-const double ALPHA_SHAPE_L = 1;
-const double ALPHA_SHAPE_D = 100;
+const double ALPHA_SALIENCY = 1;
+const double ALPHA_SPATIAL = 1;
 const double ALPHA_TEMPORAL = 1;
 
 
@@ -76,8 +74,13 @@ void NormalizeVec( vector<T> &vec ) {
 }
 
 template<class T>
+double SqrNormL2( const T &p ) {
+	return sqr( p.x ) + sqr( p.y );
+}
+
+template<class T>
 double NormL2( const T &p ) {
-	return sqrt( sqr( p.x ) + sqr( p.y ) );
+	return sqrt( SqrNormL2( p ) );
 }
 
 template<class T>

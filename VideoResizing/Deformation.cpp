@@ -13,6 +13,9 @@ Deformation::Deformation( vector<KeyFrame> &_frames, const string &_videoName ) 
 
 	controlPointsNum = 0;
 	controlPoints.clear();
+	centerControlPointIndex.clear();
+	temporalControlPointIndex.clear();
+	spatialEdges.clear();
 	frameControlPointIndex = vector< vector<int> >( frameNum );
 
 	for ( auto &frame : frames ) {
@@ -246,7 +249,9 @@ Point2f Deformation::GetBoundPoint( int index0, int index1 ) {
 
 }
 
-void Deformation::DelaunayDivide() {
+void Deformation::BuildControlPoints() {
+
+	printf( "\tBuild key frames control points. " );
 
 // #define DEBUG_DELAUNAY_DIVIDE
 
@@ -264,6 +269,7 @@ void Deformation::DelaunayDivide() {
 			controlPoints.push_back( ControlPoint( i, frames[i].superpixelCenter[j], ControlPoint::ANCHOR_CENTER, j, saliency ) );
 			controlPointsMap[i].at<int>( frames[i].superpixelCenter[j] ) = controlPointsNum;
 			frameControlPointIndex[i][j] = controlPointsNum;
+			centerControlPointIndex.push_back( controlPointsNum );
 
 			subdiv.insert( frames[i].superpixelCenter[j] );
 			controlPointsNum++;
@@ -290,7 +296,7 @@ void Deformation::DelaunayDivide() {
 
 			int index0 = controlPointsMap[i].at<int>( p0 );
 			int index1 = controlPointsMap[i].at<int>( p1 );
-			
+
 			string edgeHash0 = to_string( index0 ) + " " + to_string( index1 );
 			string edgeHash1 = to_string( index1 ) + " " + to_string( index0 );
 			if ( edgeExist.count( edgeHash0 ) > 0 ) continue;
@@ -301,7 +307,7 @@ void Deformation::DelaunayDivide() {
 			if ( frames[i].superpixelBoundLabel[controlPoints[index0].superpixelIndex] != KeyFrame::BOUND_NONE &&
 				 frames[i].superpixelBoundLabel[controlPoints[index1].superpixelIndex] != KeyFrame::BOUND_NONE ) {
 				double superpixelDist = NormL2( p0 - p1 );
-				if (superpixelDist > superpixelMaxDist ) continue;
+				if ( superpixelDist > superpixelMaxDist ) continue;
 			}
 
 			Point2f neighborPoint = GetBoundPoint( index0, index1 );
@@ -396,27 +402,18 @@ void Deformation::DelaunayDivide() {
 
 	}
 
-	printf( "\tControl point num: %d.\n", controlPoints.size() );
-
-}
-
-void Deformation::BuildControlPoints() {
-
-	printf( "\tBuild key frames control points.\n" );
-
-	DelaunayDivide();
+	printf( "Control point num: %d.\n", controlPoints.size() );
 
 }
 
 void Deformation::AddSpatialNeighbors() {
 
-#define DEBUG_ADD_SPATIAL_NEIGHBORS
+// #define DEBUG_ADD_SPATIAL_NEIGHBORS
 
 	printf( "\tAdd spatial neighbors to control points.\n" );
 
 	int frameId = -1;
 	Mat cannyImg, visitedMap;
-	spatialEdges.clear();
 	
 	for ( int controlPointIndex = 0; controlPointIndex < controlPointsNum; controlPointIndex++ ) {
 
@@ -471,7 +468,9 @@ void Deformation::AddSpatialNeighbors() {
 
 				if ( controlPointsMap[frameId].at<int>( nextPos ) != -1 && controlPointsMap[frameId].at<int>( nextPos ) != curControlPointIndex ) {
 					nextControlPointIndex = controlPointsMap[frameId].at<int>( nextPos );
-					spatialEdges.push_back( make_pair( curControlPointIndex, nextControlPointIndex ) );
+					int smallIndex = min( curControlPointIndex, nextControlPointIndex );
+					int largeIndex = max( curControlPointIndex, nextControlPointIndex );
+					spatialEdges.push_back( make_pair( smallIndex, largeIndex ) );
 				}
 			}
 
@@ -520,12 +519,19 @@ void Deformation::AddSpatialNeighbors() {
 
 }
 
-void Deformation::CalcBaryCoordLambda( const Point2f &p, const vector<Point2f> &vertices, vector<double> &lambda ) {
+void Deformation::CalcBaryCoordLambda( const Point2f &p, vector<Point2f> &vertices, vector<double> &lambda ) {
 
 	if ( vertices.size() == 3 ) {
 
 		double detT = (vertices[1].y - vertices[2].y) * (vertices[0].x - vertices[2].x) +
 			(vertices[2].x - vertices[1].x) * (vertices[0].y - vertices[2].y);
+
+		if ( SignNumber( detT ) == 0 ) {
+			vertices.erase( vertices.begin() );
+			lambda.erase( lambda.begin() );
+			CalcBaryCoordLambda( p, vertices, lambda );
+			return;
+		}
 
 		lambda[0] = ((vertices[1].y - vertices[2].y) * (p.x - vertices[2].x) +
 					  (vertices[2].x - vertices[1].x) * (p.y - vertices[2].y)) / detT;
@@ -536,6 +542,13 @@ void Deformation::CalcBaryCoordLambda( const Point2f &p, const vector<Point2f> &
 	} else if ( vertices.size() == 2 ) {
 
 		double detT = vertices[0].x * vertices[1].y - vertices[0].y * vertices[1].x;
+
+		if ( SignNumber( detT ) == 0 ) {
+			vertices.erase( vertices.begin() );
+			lambda.erase( lambda.begin() );
+			lambda[0] = 1;
+			return;
+		}
 
 		if ( SignNumber( detT ) == 0 ) {
 			if ( SignNumber( vertices[0].x + vertices[1].x ) != 0 ) {
@@ -555,27 +568,35 @@ void Deformation::CalcBaryCoordLambda( const Point2f &p, const vector<Point2f> &
 
 void Deformation::CalcBaryCoord1( const Mat &cpMap, const Point2f &p, vector<BaryCoord> &baryCoord ) {
 	int controlPointIndex = cpMap.at<int>( p );
+	if ( controlPointIndex == -1 ) {
+		cout << "1 " << p << endl;
+	}
 	baryCoord.push_back( make_pair( 1, controlPointIndex ) );
 }
 
 void Deformation::CalcBaryCoord2( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord ) {
 
 	Point2f pointOrg, pointDst;
-	vector<Point2f> biVertices;
+	vector<Point2f> vertices;
 
 	if ( subdiv.edgeOrg( e0, &pointOrg ) > 0 && subdiv.edgeDst( e0, &pointDst ) > 0 ) {
-		biVertices.push_back( pointOrg );
-		biVertices.push_back( pointDst );
+		RestrictInside( pointOrg, frameSize );
+		RestrictInside( pointDst, frameSize );
+		vertices.push_back( pointOrg );
+		vertices.push_back( pointDst );
 	} else {
 		cout << "[CalcBaryCoord2] Get points error: pointOrg " << subdiv.edgeOrg( e0, &pointOrg ) << ", pointDst " << subdiv.edgeDst( e0, &pointDst ) << endl;
 	}
 
-	vector<double> lambda( 2 );
+	vector<double> lambda( vertices.size() );
 
-	CalcBaryCoordLambda( p, biVertices, lambda );
+	CalcBaryCoordLambda( p, vertices, lambda );
 
-	for ( int i = 0; i < 2; i++ ) {
-		int vertex = cpMap.at<int>( biVertices[i] );
+	for ( size_t i = 0; i < vertices.size(); i++ ) {
+		int vertex = cpMap.at<int>( vertices[i] );
+		if ( vertex == -1 ) {
+			cout << "2 " << vertices[i] << endl;
+		}
 		baryCoord.push_back( make_pair( lambda[i], vertex ) );
 	}
 
@@ -594,7 +615,7 @@ void Deformation::CalcBaryCoord2( Subdiv2D &subdiv, const Mat &cpMap, int e0, co
 
 void Deformation::CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, const Point2f &p, vector<BaryCoord> &baryCoord ) {
 
-	vector<Point2f> triVertices;
+	vector<Point2f> vertices;
 	int e = e0;
 
 	do {
@@ -602,27 +623,29 @@ void Deformation::CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, co
 		if ( subdiv.edgeOrg( e, &pointOrg ) > 0 && subdiv.edgeDst( e, &pointDst ) > 0 ) {
 
 			bool vertexExistFlag = false;
-			for ( const auto &vertex : triVertices ) {
+			RestrictInside( pointOrg, frameSize );
+			for ( const auto &vertex : vertices ) {
 				if ( vertex == pointOrg ) {
 					vertexExistFlag = true;
 					break;
 				}
 			}
 			if ( !vertexExistFlag ) {
-				triVertices.push_back( pointOrg );
-				if ( triVertices.size() >= 3 ) break;
+				vertices.push_back( pointOrg );
+				if ( vertices.size() >= 3 ) break;
 			}
 
 			vertexExistFlag = false;
-			for ( const auto &vertex : triVertices ) {
+			RestrictInside( pointDst, frameSize );
+			for ( const auto &vertex : vertices ) {
 				if ( vertex == pointDst ) {
 					vertexExistFlag = true;
 					break;
 				}
 			}
 			if ( !vertexExistFlag ) {
-				triVertices.push_back( pointDst );
-				if ( triVertices.size() >= 3 ) break;
+				vertices.push_back( pointDst );
+				if ( vertices.size() >= 3 ) break;
 			}
 
 		}
@@ -631,14 +654,9 @@ void Deformation::CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, co
 
 	} while ( e != e0 );
 
-	if ( triVertices.size() != 3 ) {
-		printf( "[CalcBaryCoord3] Triangle vertices size is inequal 3.\n" );
-		return;
-	}
+	vector<double> lambda( vertices.size() );
 
-	vector<double> lambda( 3 );
-
-	CalcBaryCoordLambda( p, triVertices, lambda );
+	CalcBaryCoordLambda( p, vertices, lambda );
 
 #ifdef DEBUG
 	/*cout << nextFramePos << endl;
@@ -652,8 +670,11 @@ void Deformation::CalcBaryCoord3( Subdiv2D &subdiv, const Mat &cpMap, int e0, co
 	cout << Point2f( tmpX, tmpY ) << endl;*/
 #endif
 
-	for ( int i = 0; i < 3; i++ ) {
-		int vertex = cpMap.at<int>( triVertices[i] );
+	for ( size_t i = 0; i < vertices.size(); i++ ) {
+		int vertex = cpMap.at<int>( vertices[i] );
+		if ( vertex == -1 ) {
+			cout << "3 " << vertices[i] << endl;
+		}
 		baryCoord.push_back( make_pair( lambda[i], vertex ) );
 	}
 
@@ -705,7 +726,6 @@ void Deformation::AddTemporalNeighbors() {
 	int nextFramePointIndex = 0;
 	Rect rect( 0, 0, frameSize.width, frameSize.height );
 	
-
 	for ( ; nextFramePointIndex < controlPointsNum; nextFramePointIndex++ ) {
 		if ( controlPoints[nextFramePointIndex].frameId != 0 ) break;
 	}
@@ -730,14 +750,15 @@ void Deformation::AddTemporalNeighbors() {
 
 			Point2f flow = frames[controlPoint.frameId].forwardFlowMap.at<Point2f>( Point( controlPoint.originPos ) );
 			Point2f nextFramePos = controlPoint.originPos + flow;
-			controlPoint.flow = flow;
+			controlPoint.flow = Point2f( flow.x * deformedScaleX, flow.y * deformedScaleY );
 
 			if ( CheckOutside( nextFramePos, frameSize ) ) continue;
 
 			vector<BaryCoord> baryCoord;
-			int locateStatus = LocatePoint( subdiv, controlPointsMap[frameId], nextFramePos, baryCoord );
+			int locateStatus = LocatePoint( subdiv, controlPointsMap[frameId + 1], nextFramePos, baryCoord );
 			if ( locateStatus == CV_PTLOC_INSIDE || locateStatus == CV_PTLOC_ON_EDGE || locateStatus == CV_PTLOC_VERTEX ) {
 				controlPoint.AddTemporalNeighbor( baryCoord );
+				temporalControlPointIndex.push_back( curFramePointIndex );
 			}
 			
 		}
@@ -750,36 +771,108 @@ void Deformation::InitDeformation( double _deformedScaleX, double _deformedScale
 
 	printf( "Initialize deformation.\n" );
 
-	BuildControlPoints();
-	AddSpatialNeighbors();
-	AddTemporalNeighbors();
-
 	deformedScaleX = _deformedScaleX;
 	deformedScaleY = _deformedScaleY;
 	deformedFrameSize = Size( CeilToInt( frameSize.width * deformedScaleX ), CeilToInt( frameSize.height * deformedScaleY ) );
+
+	BuildControlPoints();
+	AddSpatialNeighbors();
+	AddTemporalNeighbors();
 
 	for ( auto &controlPoint : controlPoints ) {
 		controlPoint.pos.x *= deformedScaleX;
 		controlPoint.pos.y *= deformedScaleY;
 	}
 
-#ifdef DEBUG
+#ifdef DEBUG_INIT_DEFORMATION
 	//DrawEdge( ORIGIN_POS );
 	//DrawEdge( DEFORMED_POS );
 #endif
 
 }
 
+double Deformation::CalcSaliencyEnergy() {
+
+	double saliencyEnergy = 0;
+
+	for ( auto &controlPointIndex : centerControlPointIndex ) {
+
+		double tmpEnergy = 0;
+		ControlPoint &centerPoint = controlPoints[controlPointIndex];
+
+		for ( auto &boundPointIndex : centerPoint.boundNeighbors ) {
+
+			ControlPoint &boundPoint = controlPoints[boundPointIndex];
+			tmpEnergy += SqrNormL2( (centerPoint.pos - boundPoint.pos) - (centerPoint.originPos - boundPoint.originPos) );
+
+		}
+
+		saliencyEnergy += centerPoint.saliency * tmpEnergy;
+
+	}
+
+	return saliencyEnergy;
+
+}
+
+double Deformation::CalcSpatialEnergy() {
+
+	double spatialEnergy = 0;
+
+	for ( auto &edge : spatialEdges ) {
+
+		ControlPoint &p0 = controlPoints[edge.first];
+		ControlPoint &p1 = controlPoints[edge.second];
+
+		Point2f originDirection = 1.0f / NormL2( p0.originPos - p1.originPos ) * (p0.originPos - p1.originPos);
+		Point2f curDirection = 1.0f / NormL2( p0.pos - p1.pos ) * (p0.pos - p1.pos);
+		spatialEnergy += SqrNormL2( curDirection - originDirection );
+
+	}
+
+	return spatialEnergy;
+
+}
+
+double Deformation::CalcTemporalEnergy() {
+
+// #define DEBUG_CALC_TEMPORAL
+
+	double temporalEnergy = 0;
+
+	for ( auto &controlPointIndex : temporalControlPointIndex ) {
+
+		ControlPoint &controlPoint = controlPoints[controlPointIndex];
+
+		Point2f nextFramePointPos = CalcPointByBaryCoord( controlPoint.temporalNeighbors, DEFORMED_POS );
+		
+#ifdef DEBUG_CALC_TEMPORAL
+		cout << temporalEnergy << " " << nextFramePointPos << " " << controlPoint.pos << " " << controlPoint.flow << endl;
+		for ( size_t i = 0; i < controlPoint.temporalNeighbors.size(); i++ ) {
+			cout << "\tneighbors " << controlPoint.temporalNeighbors[i].first << " " << controlPoints[controlPoint.temporalNeighbors[i].second].pos << endl;
+		}
+#endif
+
+		temporalEnergy += SqrNormL2( nextFramePointPos - controlPoint.pos - controlPoint.flow );
+
+	}
+
+	return temporalEnergy;
+
+}
 
 double Deformation::CalcEnergy() {
 
-// #define DEBUG_CALC_ENERGY
+#define DEBUG_CALC_ENERGY
 
+	double saliencyEnergy = CalcSaliencyEnergy();
+	double spatialEnergy = CalcSpatialEnergy();
+	double temporalEnergy = CalcTemporalEnergy();
 
 #ifdef DEBUG_CALC_ENERGY
-	printf( "StructureL %.3lf, StructureD %.3lf, ShapeL %.3lf, ShapeD %.3lf, Temporal %.3lf\n", energyStructureL, energyStructureD, energyShapeL, energyShapeD, energyTemporal );
+	printf( "SaliencyE %.3lf, SpatialE %.3lf, TemporalE %.3lf\n", saliencyEnergy, spatialEnergy, temporalEnergy );
 #endif
-	double energy = 0;
+	double energy = ALPHA_SALIENCY * saliencyEnergy + ALPHA_SPATIAL * spatialEnergy + ALPHA_TEMPORAL * temporalEnergy;
 
 	return energy;
 
@@ -871,7 +964,7 @@ void Deformation::MinimizeEnergy() {
 
 #define DEBUG_MIN_ENERGY
 	
-	printf( "Minimize deformation energy.\n" );
+	printf( "\nMinimize deformation energy.\n" );
 
 	double lambda = 1;
 	double curE = CalcEnergy();
