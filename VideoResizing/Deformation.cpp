@@ -12,6 +12,7 @@ Deformation::Deformation( vector<KeyFrame> &_frames, const string &_videoName ) 
 	staticPoints.push_back( Point2f( frameSize.width - 1, frameSize.height - 1 ) );
 
 	controlPointsNum = 0;
+	freeControlPointsNum = 0;
 	controlPoints.clear();
 	centerControlPointIndex.clear();
 	temporalControlPointIndex.clear();
@@ -326,6 +327,8 @@ void Deformation::BuildControlPoints() {
 
 		}
 
+		freeControlPointsNum = controlPointsNum;
+
 		// Add anchor points.
 		for ( const auto &point : staticPoints ) {
 
@@ -433,6 +436,7 @@ void Deformation::AddSpatialNeighbors() {
 
 		queue<Point> que;
 		Point seedPoint( controlPoint.originPos );
+		vector<int> spatialEdge;
 
 		if ( cannyImg.at<uchar>( controlPoint.originPos ) == 1 &&
 			 visitedMap.at<int>( seedPoint ) == -1 ) {
@@ -452,26 +456,20 @@ void Deformation::AddSpatialNeighbors() {
 
 		}
 		
+		if ( !que.empty() ) spatialEdge.push_back( controlPointIndex );
 
 		while ( !que.empty() ) {
 
 			Point curPos = que.front();
 			que.pop();
 
-			int nextControlPointIndex = -1;
-			int curControlPointIndex = visitedMap.at<int>( curPos );
-
 			for ( int k = 0; k < NEIGHBORS_NUM; k++ ) {
 
 				Point nextPos = curPos + neighbors[k];
 				if ( CheckOutside( nextPos, frameSize ) ) continue;
 
-				if ( controlPointsMap[frameId].at<int>( nextPos ) != -1 && controlPointsMap[frameId].at<int>( nextPos ) != curControlPointIndex ) {
-					nextControlPointIndex = controlPointsMap[frameId].at<int>( nextPos );
-					int smallIndex = min( curControlPointIndex, nextControlPointIndex );
-					int largeIndex = max( curControlPointIndex, nextControlPointIndex );
-					spatialEdges.push_back( make_pair( smallIndex, largeIndex ) );
-				}
+				int nextControlPointIndex = controlPointsMap[frameId].at<int>( nextPos );
+				if ( nextControlPointIndex != -1 ) spatialEdge.push_back( nextControlPointIndex );
 			}
 
 			for ( int k = 0; k < NEIGHBORS_NUM; k++ ) {
@@ -481,37 +479,55 @@ void Deformation::AddSpatialNeighbors() {
 				if ( cannyImg.at<uchar>( nextPos ) == 0 ) continue;
 				if ( visitedMap.at<int>( nextPos ) != -1 )continue;
 
-				if ( nextControlPointIndex == -1 ) {
-					visitedMap.at<int>( nextPos ) = curControlPointIndex;
-					que.push( nextPos );
-				} else {
-					visitedMap.at<int>( nextPos ) = nextControlPointIndex;
-					que.push( nextPos );
-					
-				}
+				visitedMap.at<int>( nextPos ) = controlPointIndex;
+				que.push( nextPos );
 
 			}
 
 		}
 
-	}
-
-	// Erase duplications.
-	sort( spatialEdges.begin(), spatialEdges.end() );
-
-	for ( size_t i = 1; i < spatialEdges.size(); i++ ) {
-		if ( spatialEdges[i] == spatialEdges[i - 1] ) {
-			spatialEdges.erase( spatialEdges.begin() + i );
-		}
-	}
+		// Erase duplications.
+		sort( spatialEdge.begin(), spatialEdge.end() );
 
 #ifdef DEBUG_ADD_SPATIAL_NEIGHBORS
-	for ( size_t i = 0; i < spatialEdges.size(); i++ ) {
-		ControlPoint &p0 = controlPoints[spatialEdges[i].first];
-		ControlPoint &p1 = controlPoints[spatialEdges[i].second];
-		Mat debugImg = frames[p0.frameId].img.clone();
-		circle( debugImg, p0.originPos, 2, Scalar( 0, 0, 255 ), 2 );
-		circle( debugImg, p1.originPos, 2, Scalar( 255, 0, 255 ), 2 );
+		if ( spatialEdge.size() > 1 ) {
+			for ( size_t i = 0; i < spatialEdge.size(); i++ ) {
+				cout << spatialEdge[i] << " ";
+			}
+			cout << endl;
+		}
+#endif
+
+		for ( size_t i = 1; i < spatialEdge.size(); i++ ) {
+			if ( spatialEdge[i] == spatialEdge[i - 1] ) {
+				spatialEdge.erase( spatialEdge.begin() + i );
+				i--;
+			}
+		}
+
+		if ( spatialEdge.size() > 1 ) {
+			spatialEdges.push_back( spatialEdge );
+		}
+
+	}	
+
+#ifdef DEBUG_ADD_SPATIAL_NEIGHBORS
+
+	cout << endl << endl;
+
+	for ( const auto &spatialEdge : spatialEdges ) {
+		for ( const auto &controlPointIndex : spatialEdge ) {
+			cout << controlPointIndex << " ";
+		}
+		cout << endl;
+	}
+
+	for ( const auto &spatialEdge: spatialEdges ) {
+		Mat debugImg = frames[controlPoints[spatialEdge[0]].frameId].img.clone();
+		for ( const auto &controlPointIndex : spatialEdge ) {
+			ControlPoint &p = controlPoints[controlPointIndex];
+			circle( debugImg, p.originPos, 2, Scalar( 0, 0, 255 ), 2 );
+		}
 		imshow( "Spatial Neighbors", debugImg );
 		waitKey( 0 );
 	}
@@ -795,12 +811,12 @@ double Deformation::CalcSaliencyEnergy() {
 
 	double saliencyEnergy = 0;
 
-	for ( auto &controlPointIndex : centerControlPointIndex ) {
+	for ( const auto &controlPointIndex : centerControlPointIndex ) {
 
 		double tmpEnergy = 0;
 		ControlPoint &centerPoint = controlPoints[controlPointIndex];
 
-		for ( auto &boundPointIndex : centerPoint.boundNeighbors ) {
+		for ( const auto &boundPointIndex : centerPoint.boundNeighbors ) {
 
 			ControlPoint &boundPoint = controlPoints[boundPointIndex];
 			tmpEnergy += SqrNormL2( (centerPoint.pos - boundPoint.pos) - (centerPoint.originPos - boundPoint.originPos) );
@@ -819,15 +835,21 @@ double Deformation::CalcSpatialEnergy() {
 
 	double spatialEnergy = 0;
 
-	for ( auto &edge : spatialEdges ) {
+	for ( const auto &spatialEdge : spatialEdges ) {
 
-		ControlPoint &p0 = controlPoints[edge.first];
-		ControlPoint &p1 = controlPoints[edge.second];
-
-		Point2f originDirection = 1.0f / NormL2( p0.originPos - p1.originPos ) * (p0.originPos - p1.originPos);
-		Point2f curDirection = 1.0f / NormL2( p0.pos - p1.pos ) * (p0.pos - p1.pos);
-		spatialEnergy += SqrNormL2( curDirection - originDirection );
-
+		Point2f sum( 0, 0 );
+		Point2f squaredSum( 0, 0 );
+		for ( const auto &controlPointIndex : spatialEdge ) {
+			const ControlPoint &p = controlPoints[controlPointIndex];
+			sum.x += (double)p.pos.x / p.originPos.x;
+			sum.y += (double)p.pos.y / p.originPos.y;
+			squaredSum.x += sqr( (double)p.pos.x / p.originPos.x );
+			squaredSum.y += sqr( (double)p.pos.y / p.originPos.y );
+		}
+		
+		spatialEnergy += 1.0f / spatialEdge.size() * (squaredSum.x + squaredSum.y) 
+			- 1.0f / sqr( spatialEdge.size() ) *(sqr( sum.x ) + sqr( sum.y ));
+		
 	}
 
 	return spatialEnergy;
@@ -853,7 +875,7 @@ double Deformation::CalcTemporalEnergy() {
 		}
 #endif
 
-		temporalEnergy += SqrNormL2( nextFramePointPos - controlPoint.pos - controlPoint.flow );
+		temporalEnergy += SqrNormL2( (nextFramePointPos - controlPoint.pos) - controlPoint.flow );
 
 	}
 
@@ -878,15 +900,117 @@ double Deformation::CalcEnergy() {
 
 }
 
+void Deformation::AddSaliencyConstraints( Mat &coefMat, Mat &constVec ) {
 
-void Deformation::CollinearConstraint( vector<Point2f> &newControlPoints ) {
+	for ( auto &centerPointIndex : centerControlPointIndex ) {
 
-// #define DEBUG_COLLINEAR
+		ControlPoint &centerPoint = controlPoints[centerPointIndex];
+
+		double saliencySum = ALPHA_SALIENCY * 2 * centerPoint.saliency * centerPoint.boundNeighbors.size();
+
+		// centerPoint row
+		coefMat.at<float>( 2 * centerPointIndex, 2 * centerPointIndex ) += saliencySum;
+		coefMat.at<float>( 2 * centerPointIndex + 1, 2 * centerPointIndex + 1 ) += saliencySum;
+
+		for ( auto &boundPointIndex : centerPoint.boundNeighbors ) {
+
+			ControlPoint &boundPoint = controlPoints[boundPointIndex];
+
+			if ( boundPoint.anchorType == ControlPoint::ANCHOR_BOUND ) {
+
+				// centerPoint row
+				coefMat.at<float>( 2 * centerPointIndex, 2 * boundPointIndex ) -= ALPHA_SALIENCY * 2 * saliencySum;
+				coefMat.at<float>( 2 * centerPointIndex + 1, 2 * boundPointIndex + 1 ) -= ALPHA_SALIENCY * 2 * saliencySum;
+
+				// boundPoint row
+				coefMat.at<float>( 2 * boundPointIndex, 2 * centerPointIndex ) -= ALPHA_SALIENCY * 2 * centerPoint.saliency;
+				coefMat.at<float>( 2 * boundPointIndex, 2 * boundPointIndex ) += ALPHA_SALIENCY * 2 * centerPoint.saliency;
+				coefMat.at<float>( 2 * boundPointIndex + 1, 2 * centerPointIndex + 1 ) -= ALPHA_SALIENCY * 2 * centerPoint.saliency;
+				coefMat.at<float>( 2 * boundPointIndex + 1, 2 * boundPointIndex + 1 ) += ALPHA_SALIENCY * 2 * centerPoint.saliency;
+
+				// centerPoint row
+				constVec.at<float>( 2 * centerPointIndex, 1 ) += ALPHA_SALIENCY * 2 * centerPoint.saliency * (centerPoint.pos.x - boundPoint.pos.x);
+				constVec.at<float>( 2 * centerPointIndex + 1, 1 ) += ALPHA_SALIENCY * 2 * centerPoint.saliency * (centerPoint.pos.y - boundPoint.pos.y);
+
+				// boundPoint row
+				constVec.at<float>( 2 * boundPointIndex, 1 ) -= ALPHA_SALIENCY * 2 * centerPoint.saliency * (centerPoint.pos.x - boundPoint.pos.x);
+				constVec.at<float>( 2 * boundPointIndex + 1, 1 ) -= ALPHA_SALIENCY * 2 * centerPoint.saliency * (centerPoint.pos.x - boundPoint.pos.x);
+
+			} else {
+
+				// centerPoint row
+				constVec.at<float>( 2 * centerPointIndex, 1 ) += ALPHA_SALIENCY * 2 * centerPoint.saliency * boundPoint.pos.x;
+				constVec.at<float>( 2 * centerPointIndex + 1, 1 ) += ALPHA_SALIENCY * 2 * centerPoint.saliency * boundPoint.pos.y;
+
+			}
+
+		}
+
+	}
+}
+
+void Deformation::AddSpatialConstraints( Mat &coefMat, Mat &constVec ) {
+
+	for ( const auto &spatialEdge : spatialEdges ) {
+
+		int spatialNum = spatialEdge.size();
+		for ( const auto &controlPointIndex : spatialEdge ) {
+			
+			if ( controlPoints[controlPointIndex].anchorType != ControlPoint::ANCHOR_CENTER &&
+				 controlPoints[controlPointIndex].anchorType != ControlPoint::ANCHOR_BOUND ) {
+				continue;
+			}
+			for ( const auto &colIndex : spatialEdge ) {
+
+				if ( controlPointIndex == colIndex ) {
+					coefMat.at<float>( 2 * controlPointIndex, 2 * colIndex ) = ALPHA_SPATIAL * 2.0f * (spatialNum - 1) / sqr( spatialNum );
+					coefMat.at<float>( 2 * controlPointIndex + 1, 2 * colIndex + 1 ) = ALPHA_SPATIAL * 2.0f * (spatialNum - 1) / sqr( spatialNum );
+				} else {
+
+					if ( controlPoints[colIndex].anchorType != ControlPoint::ANCHOR_CENTER &&
+						 controlPoints[colIndex].anchorType != ControlPoint::ANCHOR_BOUND ) {
+						constVec.at<float>( 2 * controlPointIndex, 1 ) += ALPHA_SPATIAL * 2.0f / sqr( spatialNum );
+						constVec.at<float>( 2 * controlPointIndex + 1, 1 ) += ALPHA_SPATIAL * 2.0f / sqr( spatialNum );
+					} else {
+						coefMat.at<float>( 2 * controlPointIndex, 2 * colIndex ) = -ALPHA_SPATIAL * 2.0f / sqr( spatialNum );
+						coefMat.at<float>( 2 * controlPointIndex + 1, 2 * colIndex + 1 ) = -ALPHA_SPATIAL * 2.0f / sqr( spatialNum );
+					}
+					
+				}
+			}
+			
+		}
+
+	}
+
+}
+void Deformation::AddTemporalConstraints( Mat &coefMat, Mat &constVec ) {
+
+}
+
+void Deformation::OptimizeEnergyFunction( vector<Point2f> &newControlPoints ) {
+
+	Mat coefMat( 2 * freeControlPointsNum, 2 * freeControlPointsNum, CV_32FC1, Scalar( 0 ) );
+	Mat constVec( 2 * freeControlPointsNum, 1, CV_32FC1, Scalar( 0 ) );
+
+	AddSaliencyConstraints( coefMat, constVec );
+	AddSpatialConstraints( coefMat, constVec );
+	AddTemporalConstraints( coefMat, constVec );
+
+	Mat resVec;
+	solve( coefMat, constVec, resVec, DECOMP_NORMAL );
+
+}
+
+
+void Deformation::CollinearConstraints( vector<Point2f> &newControlPoints ) {
+
+	// #define DEBUG_COLLINEAR
 
 	for ( size_t i = 0; i < controlPoints.size(); i++ ) {
 
 		if ( controlPoints[i].anchorType != ControlPoint::ANCHOR_BOUND ) continue;
-		
+
 		Point2f p0 = newControlPoints[i];
 		Point2f p1 = newControlPoints[controlPoints[i].boundNeighbors[0]];
 		Point2f p2 = newControlPoints[controlPoints[i].boundNeighbors[1]];
@@ -898,27 +1022,27 @@ void Deformation::CollinearConstraint( vector<Point2f> &newControlPoints ) {
 		if ( SignNumber( norm ) == 0 ) {
 			newControlPoints[i] = p1;
 			continue;
-		} 
+		}
 
 		double projection = DotProduct( u1, u2 ) / sqr( norm );
-		
+
 		projection = max( min( projection, 1.0 ), 0.0 );
 		newControlPoints[i] = p1 + projection * u2;
-	
+
 	}
 
 }
 
 void Deformation::UpdateControlPoints( const vector<Point2f> &newControlPoints ) {
-	
-//#define DEBUG_MIN_ENERGY_UPDATE
-	
+
+	//#define DEBUG_MIN_ENERGY_UPDATE
+
 	for ( int i = 0; i < controlPointsNum; i++ ) {
 
 		if ( controlPoints[i].anchorType != ControlPoint::ANCHOR_STATIC ) {
 #ifdef DEBUG_MIN_ENERGY_UPDATE
 			if ( controlPoints[i].frameId == 0 )
-			cout << controlPoints[i].pos << " " << newControlPoints[i] << endl;
+				cout << controlPoints[i].pos << " " << newControlPoints[i] << endl;
 #endif
 			controlPoints[i].pos = newControlPoints[i];
 
@@ -966,27 +1090,21 @@ void Deformation::MinimizeEnergy() {
 	
 	printf( "\nMinimize deformation energy.\n" );
 
-	double lambda = 1;
 	double curE = CalcEnergy();
-	printf( "\tIter 0. Energy: %.3lf. Learning rate: %.3lf.\n", curE, lambda );
+	printf( "\tIter 0. Energy: %.3lf.\n", curE );
 
 	for ( int iter = 0; iter < MIN_ENERGY_ITERS; iter++ ) {
 
 		vector<Point2f> newControlPoints( controlPointsNum );
 
-		for ( int i = 0; i < controlPointsNum; i++ ) {
-			newControlPoints[i] = controlPoints[i].pos;
-		}
-
-		CollinearConstraint( newControlPoints );
-		
+		OptimizeEnergyFunction( newControlPoints );
+		CollinearConstraints( newControlPoints );
 		UpdateControlPoints( newControlPoints );
-
 
 		double preE = curE;
 		curE = CalcEnergy();
 
-		printf( "\tIter %d. Energy: %.3lf. Learning rate: %.3lf.\n", iter + 1, curE, lambda );
+		printf( "\tIter %d. Energy: %.3lf.\n", iter + 1, curE );
 
 #ifdef DEBUG_MIN_ENERGY
 		Mat edgeImg;
@@ -994,12 +1112,6 @@ void Deformation::MinimizeEnergy() {
 		imshow( "Edge Image", edgeImg );
 		waitKey(0);
 #endif 
-
-		if ( curE >= preE ) {
-			lambda *= 0.8;
-		}
-
-		if ( lambda < ITER_TERMINATE ) break;
 
 	}
 }

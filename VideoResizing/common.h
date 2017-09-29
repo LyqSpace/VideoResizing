@@ -44,8 +44,8 @@ const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 11;
 
 const double ALPHA_SALIENCY = 1;
-const double ALPHA_SPATIAL = 1;
-const double ALPHA_TEMPORAL = 1;
+const double ALPHA_SPATIAL = 0;
+const double ALPHA_TEMPORAL = 0;
 
 
 template<class T, size_t N>

@@ -20,13 +20,13 @@ private:
 	vector<KeyFrame> &frames;
 	vector<Point2f> staticPoints;
 
-	int controlPointsNum;
+	int controlPointsNum, freeControlPointsNum;
 	vector<ControlPoint> controlPoints;
 	vector<Mat> controlPointsMap;
 	vector< vector<int> > frameControlPointIndex;
 	vector<int> centerControlPointIndex;
 	vector<int> temporalControlPointIndex;
-	vector< pair<int, int> > spatialEdges;
+	vector< vector<int> > spatialEdges;
 
 	double deformedScaleX, deformedScaleY;
 	Size deformedFrameSize;
@@ -53,7 +53,12 @@ private:
 	double CalcSaliencyEnergy();
 	double CalcSpatialEnergy();
 	double CalcTemporalEnergy();
-	void CollinearConstraint( vector<Point2f> &newControlPoints );
+
+	void AddSaliencyConstraints( Mat &coefMat, Mat &constVec );
+	void AddSpatialConstraints( Mat &coefMat, Mat &constVec );
+	void AddTemporalConstraints( Mat &coefMat, Mat &constVec );
+	void OptimizeEnergyFunction( vector<Point2f> &newControlPoints );
+	void CollinearConstraints( vector<Point2f> &newControlPoints );
 	void UpdateControlPoints( const vector<Point2f> &newControlPoints );
 
 public:
