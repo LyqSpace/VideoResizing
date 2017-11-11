@@ -1432,19 +1432,33 @@ void Deformation::CalcDeformedMap() {
 
 	for ( int frameId = 0; frameId < frameNum; frameId++ ) {
 
-		deformedMap.push_back( Mat( deformedFrameSize, CV_32FC2 ) );
-
 		printf( "Calculate key frames deformed map. Progress rate %d/%d.\r", frameId + 1, frameNum );
-
-		Mat cpMap = Mat( frameSize, CV_32SC1, Scalar( -1 ) );
 
 		controlPointSt = controlPointEd;
 		for ( ; controlPointEd < controlPointsNum; controlPointEd++ ) {
 			if ( controlPoints[controlPointEd].frameId != frameId ) break;
 		}
 
+
 		for ( int y = 0; y < deformedFrameSize.height; y++ ) {
 			for ( int x = 0; x < deformedFrameSize.width; x++ ) {
+
+				for ( int controlPointIndex = controlPointSt; controlPointIndex < controlPointEd; controlPointIndex++ ) {
+
+				}
+
+			}
+		}
+
+		deformedMap.push_back( Mat( deformedFrameSize, CV_32FC2 ) );
+
+		
+
+		Mat cpMap = Mat( frameSize, CV_32SC1, Scalar( -1 ) );
+
+		
+
+		
 
 				vector<BaryCoord> baryCoord;
 				Point2f originPoint, deformedPoint;
