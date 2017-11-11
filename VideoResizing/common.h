@@ -14,7 +14,8 @@ using namespace cv;
 
 const double INF = 1e10;
 const double eps = 1e-8;
-const double VERY_SMALL = 1e-2;
+const double VERY_SMALL = 1e-3;
+const double SMALL_LEN = 5.0f;
 const double ITER_TERMINATE = 0.1;
 const int MIN_ENERGY_ITERS = 300;
 const int NEIGHBORS_NUM = 8;
@@ -38,13 +39,14 @@ const string INPUT_PATH = "./input/";
 const int THRES_SHOTCUT = 10;
 const int THRES_KEYFRAME = 2;
 const int QUANTIZE_LEVEL = 5;
-const int MAX_SUPERPIXEL_NUM = 50;
+const int MAX_SUPERPIXEL_NUM = 20;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 11;
 
 const double ALPHA_SALIENCY = 1;
-const double ALPHA_SPATIAL = 0;
+const double ALPHA_OBJECT = 100;
+const double ALPHA_STRUCTURE = 0;
 const double ALPHA_TEMPORAL = 0;
 
 
@@ -126,6 +128,11 @@ double CrossProduct( const T &p1, const T &p2 ) {
 template<class T>
 double DotProduct( const T &p1, const T &p2 ) {
 	return p1.x * p2.x + p1.y * p2.y;
+}
+
+template<class T1, class T2>
+double CalcRatio( T1 a, T2 b ) {
+	return (a + 0) / (b + 0);
 }
 
 void  RestrictInside( Point &p, const Size &size );

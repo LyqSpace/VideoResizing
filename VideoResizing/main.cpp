@@ -84,9 +84,8 @@ int main( int argc, char *argv[] ) {
 			deformation.RenderKeyFrames();
 
 			vector<Mat> frames;
-			ReadFrames( shotArr[i - 1], shotArr[i], frames, videoName );
-			deformation.RenderFrames( frames, shotArr[i - 1], shotArr[i] );
-
+			// ReadFrames( shotArr[i - 1], shotArr[i], frames, videoName );
+			// deformation.RenderFrames( frames, shotArr[i - 1], shotArr[i] );
 
 			cout << endl;
 

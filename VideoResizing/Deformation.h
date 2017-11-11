@@ -20,7 +20,8 @@ private:
 	vector<KeyFrame> &frames;
 	vector<Point2f> staticPoints;
 
-	int controlPointsNum, freeControlPointsNum;
+	int controlPointsNum, freeEleNum;
+	vector<int> freeEleMap;
 	vector<ControlPoint> controlPoints;
 	vector<Mat> controlPointsMap;
 	vector< vector<int> > frameControlPointIndex;
@@ -51,15 +52,18 @@ private:
 	Point2f GetBoundPoint( int, int );
 
 	double CalcSaliencyEnergy();
-	double CalcSpatialEnergy();
+	double CalcObjectEnergy();
+	double CalcStructureEnergy();
 	double CalcTemporalEnergy();
 
 	void AddSaliencyConstraints( Mat &coefMat, Mat &constVec );
-	void AddSpatialConstraints( Mat &coefMat, Mat &constVec );
+	void AddObjectConstraints( Mat &coefMat, Mat &constVec );
+	void AddStructureConstraints( Mat &coefMat, Mat &constVec );
 	void AddTemporalConstraints( Mat &coefMat, Mat &constVec );
-	void OptimizeEnergyFunction( vector<Point2f> &newControlPoints );
-	void CollinearConstraints( vector<Point2f> &newControlPoints );
-	void UpdateControlPoints( const vector<Point2f> &newControlPoints );
+	void OptimizeEnergyFunction();
+
+	void CollinearConstraints();
+	void UpdateControlPoints();
 
 public:
 
