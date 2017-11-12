@@ -13,6 +13,7 @@
 #include "saliency.h"
 #include "KeyFrame.h"
 #include "Deformation.h"
+#include "Render.h"
 
 int main( int argc, char *argv[] ) {
 
@@ -80,8 +81,12 @@ int main( int argc, char *argv[] ) {
 			Deformation deformation( keyFrames, videoName );
 			deformation.InitDeformation( deformedScaleX, deformedScaleY );
 			deformation.MinimizeEnergy();
-			deformation.CalcDeformedMap();
-			deformation.RenderKeyFrames();
+
+			Render render( deformation, deformation.controlPoints, deformation.frames );
+			render.CalcDeformedMaps();
+			render.RenderKeyFrames();
+			// deformation.CalcDeformedMap();
+			// deformation.RenderKeyFrames();
 
 			vector<Mat> frames;
 			// ReadFrames( shotArr[i - 1], shotArr[i], frames, videoName );

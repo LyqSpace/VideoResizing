@@ -15,14 +15,10 @@ class Deformation {
 private:
 	string videoName;
 
-	int frameNum;
-	Size frameSize;
-	vector<KeyFrame> &frames;
 	vector<Point2f> staticPoints;
 
 	int controlPointsNum, freeEleNum;
 	vector<int> freeEleMap;
-	vector<ControlPoint> controlPoints;
 	vector<Mat> controlPointsMap;
 	vector< vector<int> > frameControlPointIndex;
 	vector<int> centerControlPointIndex;
@@ -30,8 +26,7 @@ private:
 	vector< vector<int> > spatialEdges;
 
 	double deformedScaleX, deformedScaleY;
-	Size deformedFrameSize;
-
+	
 	vector<Mat> deformedFrames;
 
 	void BuildControlPoints();
@@ -74,6 +69,11 @@ public:
 		DEFORMED_POS_WITH_FRAME = 3
 	} POS_TYPE;
 
+	vector<KeyFrame> &frames;
+	Size frameSize, deformedFrameSize;
+	int frameNum;
+
+	vector<ControlPoint> controlPoints;
 	vector<Mat> deformedMap;
 
 	Deformation( vector<KeyFrame> &, const string &_videoName );
@@ -82,9 +82,6 @@ public:
 	double CalcEnergy();
 	void MinimizeEnergy();
 
-	void CalcDeformedMap();
-	void RenderFrame( const Mat &, const Mat &, Mat & );
-	void RenderKeyFrames();
 	void RenderFrames( const vector<Mat> &inputFrames, int shotSt, int shotEd );
 
 };

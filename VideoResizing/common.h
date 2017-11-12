@@ -14,7 +14,7 @@ using namespace cv;
 
 const double INF = 1e10;
 const double eps = 1e-8;
-const double VERY_SMALL = 1e-3;
+const double VERY_SMALL = 1e-5;
 const double SMALL_LEN = 5.0f;
 const double ITER_TERMINATE = 0.1;
 const int MIN_ENERGY_ITERS = 300;
@@ -39,13 +39,13 @@ const string INPUT_PATH = "./input/";
 const int THRES_SHOTCUT = 10;
 const int THRES_KEYFRAME = 2;
 const int QUANTIZE_LEVEL = 5;
-const int MAX_SUPERPIXEL_NUM = 20;
+const int MAX_SUPERPIXEL_NUM = 30;
 const double SIGMA_COLOR = 40;
 const double SIGMA_DIST = 200;
 const int SALIENCY_SMOOTH_SPAN = 11;
 
-const double ALPHA_SALIENCY = 1;
-const double ALPHA_OBJECT = 100;
+const double ALPHA_SALIENCY = 10;
+const double ALPHA_OBJECT = 1;
 const double ALPHA_STRUCTURE = 0;
 const double ALPHA_TEMPORAL = 0;
 

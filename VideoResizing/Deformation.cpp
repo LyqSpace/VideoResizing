@@ -1,6 +1,6 @@
 #include "Deformation.h"
 
-Deformation::Deformation( vector<KeyFrame> &_frames, const string &_videoName ) :frames( _frames ) {
+Deformation::Deformation( vector<KeyFrame> &_frames, const string &_videoName ) : frames( _frames ) {
 
 	videoName = _videoName;
 	frameNum = _frames.size();
@@ -1391,7 +1391,7 @@ void Deformation::MinimizeEnergy() {
 	imshow( "Deformed Image 0", edgeImg );
 	DrawEdge( 0, ORIGIN_POS, edgeImg );
 	imshow( "Origin Image 0", edgeImg );
-	waitKey( 0 );
+	waitKey( 1 );
 #endif 
 }
 
@@ -1419,160 +1419,36 @@ Point2f Deformation::CalcPointByBaryCoord( const vector<BaryCoord> &baryCoord, i
 
 }
 
-void Deformation::CalcDeformedMap() {
-
-//#define DEBUG_CALC_DEFORMED_MAP
-
-	clock_t timeSt = clock();
-
-	deformedMap.clear();
-	
-	int controlPointSt, controlPointEd;
-	controlPointEd = 0;
-
-	for ( int frameId = 0; frameId < frameNum; frameId++ ) {
-
-		printf( "Calculate key frames deformed map. Progress rate %d/%d.\r", frameId + 1, frameNum );
-
-		controlPointSt = controlPointEd;
-		for ( ; controlPointEd < controlPointsNum; controlPointEd++ ) {
-			if ( controlPoints[controlPointEd].frameId != frameId ) break;
-		}
-
-
-		for ( int y = 0; y < deformedFrameSize.height; y++ ) {
-			for ( int x = 0; x < deformedFrameSize.width; x++ ) {
-
-				for ( int controlPointIndex = controlPointSt; controlPointIndex < controlPointEd; controlPointIndex++ ) {
-
-				}
-
-			}
-		}
-
-		deformedMap.push_back( Mat( deformedFrameSize, CV_32FC2 ) );
-
-		
-
-		Mat cpMap = Mat( frameSize, CV_32SC1, Scalar( -1 ) );
-
-		
-
-		
-
-				vector<BaryCoord> baryCoord;
-				Point2f originPoint, deformedPoint;
-				
-				deformedPoint = Point2f( x, y );
-				int locateStatus = LocatePoint( subdiv, cpMap, deformedPoint, baryCoord );
-				if ( locateStatus == CV_PTLOC_INSIDE || locateStatus == CV_PTLOC_ON_EDGE || locateStatus == CV_PTLOC_VERTEX ) {
-					originPoint = CalcPointByBaryCoord( baryCoord, ORIGIN_POS );
-					RestrictInside( originPoint, frameSize );
-					deformedMap[frameId].at<Point2f>( deformedPoint ) = originPoint;
-				} else {
-					printf( "[CalcDeformedMap] Locate error. " );
-					cout << deformedPoint << endl;
-				}
-				
-#ifdef DEBUG_CALC_DEFORMED_MAP
-				if ( frameId == 0 && y == 80 && x <= 30 ) {
-					for ( size_t i = 0; i < baryCoord.size(); i++ ) {
-						cout << baryCoord[i].first << " " << controlPoints[baryCoord[i].second].pos << " " << controlPoints[baryCoord[i].second].originPos << endl;
-					}
-					cout << x << " " << originPoint << " " << deformedPoint << endl << endl;
-				}
-
-#endif		
-
-#ifdef DEBUG
-				// DrawLocate( deformedPoint, baryCoord );
-#endif
-			}
-		}
-
-	}
-
-	printf( "\n" );
-	clock_t timeEd = clock();
-	printf( "Calculate key frames deformed map. Time used %ds.\n", (timeEd - timeSt) / 1000 );
-
-}
-
-void Deformation::RenderFrame( const Mat &img, const Mat &deformedMap, Mat &deformedImg ) {
-
-	Size frameSize = img.size();
-
-	deformedImg = Mat::zeros( deformedFrameSize, CV_8UC3 );
-
-	for ( int y = 0; y < deformedFrameSize.height; y++ ) {
-		for ( int x = 0; x < deformedFrameSize.width; x++ ) {
-
-			Point2f originPoint, deformedPoint;
-			deformedPoint = Point2f( x, y );
-			originPoint = deformedMap.at<Point2f>( deformedPoint );
-
-			deformedImg.at<Vec3b>( deformedPoint ) = img.at<Vec3b>( originPoint );
-
-		}
-	}
-
-	imshow( "Deformed Frame", deformedImg );
-
-}
-
-void Deformation::RenderKeyFrames() {
-
-	printf( "Render key frames.\n" );
-
-	for ( int i = 0; i < frameNum; i++ ) {
-
-		Mat deformedFrame, edgeImg;
-
-		RenderFrame( frames[i].img, deformedMap[i], deformedFrame );
-
-		deformedFrames.push_back( deformedFrame );
-
-		//imshow( "Saliency Map", frames[i].saliencyMap );
-		//imshow( "Origin Frame", frames[i].img );
-		DrawEdge( i, DEFORMED_POS_WITH_FRAME, edgeImg );
-		WriteKeyFrameEdgeImg( frames[i].frameId, edgeImg, videoName );
-
-		//waitKey();
-
-	}
-
-}
-
 void Deformation::RenderFrames( const vector<Mat> &_frames, int shotSt, int shotEd ) {
 
-	int keyframeId = 0;
+	//int keyframeId = 0;
 
-	for ( int i = shotSt; i < shotEd; i++ ) {
+	//for ( int i = shotSt; i < shotEd; i++ ) {
 
-		Mat deformedFrame;
-		int keyframeIdInSeries = frames[keyframeId].frameId;
+	//	Mat deformedFrame;
+	//	int keyframeIdInSeries = frames[keyframeId].frameId;
 
-		if ( i == keyframeIdInSeries ) {
+	//	if ( i == keyframeIdInSeries ) {
 
-			deformedFrame = deformedFrames[keyframeId];
-			keyframeId++;
+	//		deformedFrame = deformedFrames[keyframeId];
+	//		keyframeId++;
 
-		} else if ( i < keyframeIdInSeries ) {
+	//	} else if ( i < keyframeIdInSeries ) {
 
-			RenderFrame( _frames[i - shotSt], deformedMap[keyframeId], deformedFrame );
+	//		RenderFrame( _frames[i - shotSt], deformedMap[keyframeId], deformedFrame );
 
-		} else if ( i > keyframeIdInSeries ) {
+	//	} else if ( i > keyframeIdInSeries ) {
 
-			cout << "Error" << i << " " << keyframeId << " " << keyframeIdInSeries << endl;
+	//		cout << "Error" << i << " " << keyframeId << " " << keyframeIdInSeries << endl;
 
-		}
+	//	}
 
-		WriteDeformedImg( i, deformedFrame, videoName );
-		
-		imshow( "Deformed Frame", deformedFrame );
-		waitKey( 1 );
+	//	WriteDeformedImg( i, deformedFrame, videoName );
+	//	
+	//	imshow( "Deformed Frame", deformedFrame );
+	//	waitKey( 1 );
 
 
-	}
+	//}
 
 }
